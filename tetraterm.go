@@ -806,6 +806,7 @@ WASD, QE: Move Node in-game
 R: Reset Selected Node
 Shift+D: Duplicate Node
 Shift+X: Delete Node
+1: Toggle Debug Drawing
 
 F: Follow Node with Camera
 Shift+F: Search Nodes
