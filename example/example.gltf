@@ -1,0 +1,429 @@
+{
+    "asset" : {
+        "generator" : "Khronos glTF Blender I/O v3.4.50",
+        "version" : "2.0"
+    },
+    "extensionsUsed" : [
+        "KHR_lights_punctual"
+    ],
+    "extensionsRequired" : [
+        "KHR_lights_punctual"
+    ],
+    "extensions" : {
+        "KHR_lights_punctual" : {
+            "lights" : [
+                {
+                    "color" : [
+                        1,
+                        1,
+                        1
+                    ],
+                    "intensity" : 79.57747154594767,
+                    "type" : "point",
+                    "name" : "Light"
+                }
+            ]
+        }
+    },
+    "scene" : 1,
+    "scenes" : [
+        {
+            "extras" : {
+                "t3dExportFormat__" : 2,
+                "t3dExportOnSave__" : 1,
+                "t3dCameraResolution__" : [
+                    640,
+                    360
+                ],
+                "t3dCollections__" : {
+                    "Collection" : {
+                        "objects" : [
+                            "Cube",
+                            "Light",
+                            "Camera"
+                        ],
+                        "offset" : [
+                            0.0,
+                            0.0,
+                            0.0
+                        ]
+                    }
+                },
+                "t3dWorlds__" : {
+                    "World" : {
+                        "ambient color" : [
+                            0.05087608844041824,
+                            0.05087608844041824,
+                            0.05087608844041824,
+                            1.0
+                        ],
+                        "ambient energy" : 1.0
+                    }
+                },
+                "t3dCurrentWorld__" : "World"
+            },
+            "name" : "Assets",
+            "nodes" : [
+                0
+            ]
+        },
+        {
+            "extras" : {
+                "t3dCurrentWorld__" : "World"
+            },
+            "name" : "Scene",
+            "nodes" : [
+                3,
+                4,
+                5
+            ]
+        }
+    ],
+    "nodes" : [
+        {
+            "extras" : {
+                "t3dOriginalLocalPosition__" : [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "mesh" : 0,
+            "name" : "PrismDiamond"
+        },
+        {
+            "extras" : {
+                "t3dOriginalLocalPosition__" : [
+                    4.0,
+                    0.0,
+                    4.0
+                ]
+            },
+            "mesh" : 1,
+            "name" : "Cube.002",
+            "rotation" : [
+                0,
+                0.19080901145935059,
+                0,
+                0.9816271662712097
+            ],
+            "translation" : [
+                0,
+                2,
+                0
+            ]
+        },
+        {
+            "children" : [
+                1
+            ],
+            "extras" : {
+                "t3dOriginalLocalPosition__" : [
+                    4.0,
+                    0.0,
+                    2.0
+                ]
+            },
+            "mesh" : 1,
+            "name" : "Cube.001",
+            "rotation" : [
+                0,
+                0.1908089816570282,
+                0,
+                0.9816271662712097
+            ],
+            "translation" : [
+                0,
+                2,
+                0
+            ]
+        },
+        {
+            "children" : [
+                2
+            ],
+            "extras" : {
+                "t3dOriginalLocalPosition__" : [
+                    4.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "mesh" : 1,
+            "name" : "Cube",
+            "translation" : [
+                4,
+                0,
+                0
+            ]
+        },
+        {
+            "extensions" : {
+                "KHR_lights_punctual" : {
+                    "light" : 0
+                }
+            },
+            "extras" : {
+                "t3dOriginalLocalPosition__" : [
+                    8.076245307922363,
+                    1.0054539442062378,
+                    5.903861999511719
+                ]
+            },
+            "name" : "Light",
+            "rotation" : [
+                -0.28416627645492554,
+                0.7269423007965088,
+                0.34203392267227173,
+                0.5232754945755005
+            ],
+            "translation" : [
+                8.076245307922363,
+                5.903861999511719,
+                -1.0054539442062378
+            ]
+        },
+        {
+            "camera" : 0,
+            "extras" : {
+                "t3dOriginalLocalPosition__" : [
+                    24.390056610107422,
+                    -19.209199905395508,
+                    13.863737106323242
+                ]
+            },
+            "name" : "Camera",
+            "rotation" : [
+                -0.20997299253940582,
+                0.3857799470424652,
+                0.09062844514846802,
+                0.8937962055206299
+            ],
+            "translation" : [
+                24.390056610107422,
+                13.863737106323242,
+                19.209199905395508
+            ]
+        }
+    ],
+    "cameras" : [
+        {
+            "name" : "Camera",
+            "perspective" : {
+                "aspectRatio" : 1.7777777777777777,
+                "yfov" : 0.39959652046304894,
+                "zfar" : 100,
+                "znear" : 0.10000000149011612
+            },
+            "type" : "perspective"
+        }
+    ],
+    "materials" : [
+        {
+            "extras" : {
+                "t3dMaterialColor__" : [
+                    0.008727900683879852,
+                    0.3923228085041046,
+                    1.0,
+                    1.0
+                ],
+                "t3dMaterialShadeless__" : 0
+            },
+            "name" : "PrismDiamond",
+            "pbrMetallicRoughness" : {
+                "baseColorFactor" : [
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929,
+                    1
+                ],
+                "metallicFactor" : 0,
+                "roughnessFactor" : 0.5
+            }
+        },
+        {
+            "extras" : {
+                "t3dMaterialColor__" : [
+                    1.0,
+                    0.009781798347830772,
+                    0.0,
+                    1.0
+                ],
+                "t3dMaterialShadeless__" : 0
+            },
+            "name" : "Material",
+            "pbrMetallicRoughness" : {
+                "baseColorFactor" : [
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929,
+                    1
+                ],
+                "metallicFactor" : 0,
+                "roughnessFactor" : 0.5
+            }
+        }
+    ],
+    "meshes" : [
+        {
+            "extras" : {
+                "t3dVertexColorNames__" : []
+            },
+            "name" : "Cube.001",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 0,
+                        "TEXCOORD_0" : 1,
+                        "NORMAL" : 2
+                    },
+                    "indices" : 3,
+                    "material" : 0
+                }
+            ]
+        },
+        {
+            "extras" : {
+                "t3dVertexColorNames__" : []
+            },
+            "name" : "Cube",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 4,
+                        "TEXCOORD_0" : 5,
+                        "NORMAL" : 6
+                    },
+                    "indices" : 7,
+                    "material" : 1
+                }
+            ]
+        }
+    ],
+    "accessors" : [
+        {
+            "bufferView" : 0,
+            "componentType" : 5126,
+            "count" : 24,
+            "max" : [
+                1,
+                2,
+                1
+            ],
+            "min" : [
+                -1,
+                -2,
+                -1
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 1,
+            "componentType" : 5126,
+            "count" : 24,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 2,
+            "componentType" : 5126,
+            "count" : 24,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 3,
+            "componentType" : 5123,
+            "count" : 24,
+            "type" : "SCALAR"
+        },
+        {
+            "bufferView" : 4,
+            "componentType" : 5126,
+            "count" : 24,
+            "max" : [
+                1,
+                1,
+                1
+            ],
+            "min" : [
+                -1,
+                -1,
+                -1
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 5,
+            "componentType" : 5126,
+            "count" : 24,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 6,
+            "componentType" : 5126,
+            "count" : 24,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 7,
+            "componentType" : 5123,
+            "count" : 36,
+            "type" : "SCALAR"
+        }
+    ],
+    "bufferViews" : [
+        {
+            "buffer" : 0,
+            "byteLength" : 288,
+            "byteOffset" : 0,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 192,
+            "byteOffset" : 288,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 288,
+            "byteOffset" : 480,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 48,
+            "byteOffset" : 768,
+            "target" : 34963
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 288,
+            "byteOffset" : 816,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 192,
+            "byteOffset" : 1104,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 288,
+            "byteOffset" : 1296,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 72,
+            "byteOffset" : 1584,
+            "target" : 34963
+        }
+    ],
+    "buffers" : [
+        {
+            "byteLength" : 1656,
+            "uri" : "data:application/octet-stream;base64,AAAAAAAAAMAAAACAAAAAAAAAAMAAAACAAAAAAAAAAMAAAACAAAAAAAAAAMAAAACAAAAAAAAAAEAAAACAAAAAAAAAAEAAAACAAAAAAAAAAEAAAACAAAAAAAAAAEAAAACAAACAvwAAAAAAAIA/AACAvwAAAAAAAIA/AACAvwAAAAAAAIA/AACAvwAAAAAAAIA/AACAvwAAAAAAAIC/AACAvwAAAAAAAIC/AACAvwAAAAAAAIC/AACAvwAAAAAAAIC/AACAPwAAAAAAAIC/AACAPwAAAAAAAIC/AACAPwAAAAAAAIC/AACAPwAAAAAAAIC/AACAPwAAAAAAAIA/AACAPwAAAAAAAIA/AACAPwAAAAAAAIA/AACAPwAAAAAAAIA/AADAPgAAgD4AAMA+AAAAPwAAwD4AAEA/AADAPgAAgD8AACA/AAAAAAAAID8AAIA+AAAgPwAAAD8AACA/AABAPwAAAD8AAAAAAAAAPwAAAAAAAAA/AACAPwAAAD8AAIA/AAAAPwAAQD8AAAA/AABAPwAAAD8AAEA/AAAAPwAAQD8AAAA/AAAAPwAAAD8AAAA/AAAAPwAAAD8AAAA/AAAAPwAAAD8AAIA+AAAAPwAAgD4AAAA/AACAPgAAAD8AAIA+AAAAAC755L4u+WQ/LvlkPy755L4AAACAAAAAAC755L4u+WS/Lvlkvy755L4AAACAAAAAAC755D4u+WQ/LvlkPy755D4AAACAAAAAAC755D4u+WS/Lvlkvy755D4AAACAAAAAAC755L4u+WQ/AAAAAC755D4u+WQ/Lvlkvy755L4AAACALvlkvy755D4AAACALvlkvy755L4AAACALvlkvy755D4AAACAAAAAAC755L4u+WS/AAAAAC755D4u+WS/AAAAAC755L4u+WS/AAAAAC755D4u+WS/LvlkPy755L4AAACALvlkPy755D4AAACAAAAAAC755L4u+WQ/AAAAAC755D4u+WQ/LvlkPy755L4AAACALvlkPy755D4AAACACwAHAA0ADwAGABEAEwAFABcAFQAEAAkAAAAUAAgAAQASABYAAgAOABAAAwAKAAwAAACAPwAAgD8AAIC/AACAPwAAgD8AAIC/AACAPwAAgD8AAIC/AACAPwAAgL8AAIC/AACAPwAAgL8AAIC/AACAPwAAgL8AAIC/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgL8AAIA/AACAPwAAgL8AAIA/AACAPwAAgL8AAIA/AACAvwAAgD8AAIC/AACAvwAAgD8AAIC/AACAvwAAgD8AAIC/AACAvwAAgL8AAIC/AACAvwAAgL8AAIC/AACAvwAAgL8AAIC/AACAvwAAgD8AAIA/AACAvwAAgD8AAIA/AACAvwAAgD8AAIA/AACAvwAAgL8AAIA/AACAvwAAgL8AAIA/AACAvwAAgL8AAIA/AAAgPwAAAD8AACA/AAAAPwAAID8AAAA/AADAPgAAAD8AAMA+AAAAPwAAwD4AAAA/AAAgPwAAgD4AACA/AACAPgAAID8AAIA+AADAPgAAgD4AAMA+AACAPgAAwD4AAIA+AAAgPwAAQD8AACA/AABAPwAAYD8AAAA/AAAAPgAAAD8AAMA+AABAPwAAwD4AAEA/AAAgPwAAAAAAACA/AACAPwAAYD8AAIA+AAAAPgAAgD4AAMA+AAAAAAAAwD4AAIA/AAAAAAAAAAAAAIC/AAAAAAAAgD8AAACAAACAPwAAAAAAAACAAAAAAAAAgL8AAACAAAAAAAAAAAAAAIC/AACAPwAAAAAAAACAAAAAAAAAAAAAAIA/AAAAAAAAgD8AAACAAACAPwAAAAAAAACAAAAAAAAAgL8AAACAAAAAAAAAAAAAAIA/AACAPwAAAAAAAACAAACAvwAAAAAAAACAAAAAAAAAAAAAAIC/AAAAAAAAgD8AAACAAAAAAAAAgL8AAACAAACAvwAAAAAAAACAAAAAAAAAAAAAAIC/AAAAAAAAAAAAAIA/AACAvwAAAAAAAACAAAAAAAAAgD8AAACAAAAAAAAAgL8AAACAAAAAAAAAAAAAAIA/AACAvwAAAAAAAACAAQAOABQAAQAUAAcACgAGABIACgASABYAFwATAAwAFwAMABAADwADAAkADwAJABUABQACAAgABQAIAAsAEQANAAAAEQAAAAQA"
+        }
+    ]
+}

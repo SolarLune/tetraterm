@@ -1,25 +1,29 @@
 package tetraterm
 
 import (
+	"strconv"
+
 	p2p "github.com/leprosus/golang-p2p"
 	"github.com/solarlune/tetra3d"
 )
 
 const (
-	PTSceneRefresh     = "SceneRefresh"
-	PTNodeMove         = "NodeMove"
-	PTNodeRotate       = "NodeRotate"
-	PTNodeDuplicate    = "NodeDuplicate"
-	PTNodeCreate       = "NodeCreate"
-	PTNodeDelete       = "NodeDelete"
-	PTNodeFollowCamera = "CameraFollow"
-	PTNodeSelect       = "SelectNode"
-	PTNodeReset        = "ResetNode"
-	PTNodeInfo         = "NodeInfo"
-	PTNodeMoveInTree   = "NodeMoveInTree"
+	ptSceneRefresh     = "SceneRefresh"
+	ptNodeMove         = "NodeMove"
+	ptNodeRotate       = "NodeRotate"
+	ptNodeDuplicate    = "NodeDuplicate"
+	ptNodeCreate       = "NodeCreate"
+	ptGameInfo         = "GameInfo"
+	ptNodeDelete       = "NodeDelete"
+	ptNodeFollowCamera = "CameraFollow"
+	ptNodeSelect       = "SelectNode"
+	ptNodeReset        = "ResetNode"
+	ptNodeInfo         = "NodeInfo"
+	ptNodeMoveInTree   = "NodeMoveInTree"
+	ptToggleDebugDraw  = "ToggleDebugDraw"
 )
 
-type IPacket interface {
+type iPacket interface {
 	Encode() p2p.Data
 	Decode(req p2p.Data) error
 	DataType() string
@@ -27,15 +31,15 @@ type IPacket interface {
 
 //
 
-type SceneRefreshPacket struct {
-	SceneTree SceneNode
+type sceneRefreshPacket struct {
+	SceneTree sceneNode
 }
 
-func NewSceneRefreshPacket() *SceneRefreshPacket {
-	return &SceneRefreshPacket{}
+func newSceneRefreshPacket() *sceneRefreshPacket {
+	return &sceneRefreshPacket{}
 }
 
-func (packet *SceneRefreshPacket) Encode() p2p.Data {
+func (packet *sceneRefreshPacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -44,25 +48,25 @@ func (packet *SceneRefreshPacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *SceneRefreshPacket) Decode(req p2p.Data) error {
+func (packet *sceneRefreshPacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *SceneRefreshPacket) DataType() string {
-	return PTSceneRefresh
+func (packet *sceneRefreshPacket) DataType() string {
+	return ptSceneRefresh
 }
 
 //
 
-type NodeMovePacket struct {
+type nodeMovePacket struct {
 	X, Y, Z float64
 }
 
-func NewNodeMovePacket(x, y, z float64) *NodeMovePacket {
-	return &NodeMovePacket{X: x, Y: y, Z: z}
+func newNodeMovePacket(x, y, z float64) *nodeMovePacket {
+	return &nodeMovePacket{X: x, Y: y, Z: z}
 }
 
-func (packet *NodeMovePacket) Encode() p2p.Data {
+func (packet *nodeMovePacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -71,25 +75,25 @@ func (packet *NodeMovePacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeMovePacket) Decode(req p2p.Data) error {
+func (packet *nodeMovePacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeMovePacket) DataType() string {
-	return PTNodeMove
+func (packet *nodeMovePacket) DataType() string {
+	return ptNodeMove
 }
 
 //
 
-type NodeRotatePacket struct {
+type nodeRotatePacket struct {
 	X, Y, Z, Angle float64
 }
 
-func NewNodeRotatePacket(x, y, z, angle float64) *NodeRotatePacket {
-	return &NodeRotatePacket{X: x, Y: y, Z: z, Angle: angle}
+func newNodeRotatePacket(x, y, z, angle float64) *nodeRotatePacket {
+	return &nodeRotatePacket{X: x, Y: y, Z: z, Angle: angle}
 }
 
-func (packet *NodeRotatePacket) Encode() p2p.Data {
+func (packet *nodeRotatePacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -98,25 +102,25 @@ func (packet *NodeRotatePacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeRotatePacket) Decode(req p2p.Data) error {
+func (packet *nodeRotatePacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeRotatePacket) DataType() string {
-	return PTNodeRotate
+func (packet *nodeRotatePacket) DataType() string {
+	return ptNodeRotate
 }
 
 //
 
-type NodeSelectPacket struct {
+type nodeSelectPacket struct {
 	NodeID uint64
 }
 
-func NewNodeSelectPacket(nodeID uint64) *NodeSelectPacket {
-	return &NodeSelectPacket{NodeID: nodeID}
+func newNodeSelectPacket(nodeID uint64) *nodeSelectPacket {
+	return &nodeSelectPacket{NodeID: nodeID}
 }
 
-func (packet *NodeSelectPacket) Encode() p2p.Data {
+func (packet *nodeSelectPacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -125,23 +129,23 @@ func (packet *NodeSelectPacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeSelectPacket) Decode(req p2p.Data) error {
+func (packet *nodeSelectPacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeSelectPacket) DataType() string {
-	return PTNodeSelect
+func (packet *nodeSelectPacket) DataType() string {
+	return ptNodeSelect
 }
 
 //
 
-type NodeFollowCameraPacket struct{}
+type nodeFollowCameraPacket struct{}
 
-func NewNodeFollowCameraPacket() *NodeFollowCameraPacket {
-	return &NodeFollowCameraPacket{}
+func newNodeFollowCameraPacket() *nodeFollowCameraPacket {
+	return &nodeFollowCameraPacket{}
 }
 
-func (packet *NodeFollowCameraPacket) Encode() p2p.Data {
+func (packet *nodeFollowCameraPacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -150,26 +154,26 @@ func (packet *NodeFollowCameraPacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeFollowCameraPacket) Decode(req p2p.Data) error {
+func (packet *nodeFollowCameraPacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeFollowCameraPacket) DataType() string {
-	return PTNodeFollowCamera
+func (packet *nodeFollowCameraPacket) DataType() string {
+	return ptNodeFollowCamera
 }
 
 //
 
-type NodeDuplicatePacket struct {
+type nodeDuplicatePacket struct {
 	NewSelectedNode uint64
-	SceneTree       SceneNode
+	SceneTree       sceneNode
 }
 
-func NewNodeDuplicatePacket() *NodeDuplicatePacket {
-	return &NodeDuplicatePacket{}
+func newNodeDuplicatePacket() *nodeDuplicatePacket {
+	return &nodeDuplicatePacket{}
 }
 
-func (packet *NodeDuplicatePacket) Encode() p2p.Data {
+func (packet *nodeDuplicatePacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -178,26 +182,26 @@ func (packet *NodeDuplicatePacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeDuplicatePacket) Decode(req p2p.Data) error {
+func (packet *nodeDuplicatePacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeDuplicatePacket) DataType() string {
-	return PTNodeDuplicate
+func (packet *nodeDuplicatePacket) DataType() string {
+	return ptNodeDuplicate
 }
 
 //
 
-type NodeDeletePacket struct {
+type nodeDeletePacket struct {
 	NewSelectedNode uint64
-	SceneTree       SceneNode
+	SceneTree       sceneNode
 }
 
-func NewNodeDeletePacket() *NodeDeletePacket {
-	return &NodeDeletePacket{}
+func newNodeDeletePacket() *nodeDeletePacket {
+	return &nodeDeletePacket{}
 }
 
-func (packet *NodeDeletePacket) Encode() p2p.Data {
+func (packet *nodeDeletePacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -206,23 +210,23 @@ func (packet *NodeDeletePacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeDeletePacket) Decode(req p2p.Data) error {
+func (packet *nodeDeletePacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeDeletePacket) DataType() string {
-	return PTNodeDelete
+func (packet *nodeDeletePacket) DataType() string {
+	return ptNodeDelete
 }
 
 //
 
-type NodeResetPacket struct{}
+type nodeResetPacket struct{}
 
-func NewNodeResetPacket() *NodeResetPacket {
-	return &NodeResetPacket{}
+func newNodeResetPacket() *nodeResetPacket {
+	return &nodeResetPacket{}
 }
 
-func (packet *NodeResetPacket) Encode() p2p.Data {
+func (packet *nodeResetPacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -231,27 +235,73 @@ func (packet *NodeResetPacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeResetPacket) Decode(req p2p.Data) error {
+func (packet *nodeResetPacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeResetPacket) DataType() string {
-	return PTNodeReset
+func (packet *nodeResetPacket) DataType() string {
+	return ptNodeReset
 }
 
 //
 
-type NodeInfoPacket struct {
+type matrix3 [3][3]float64
+
+func matrix4ToMatrix3(mat tetra3d.Matrix4) matrix3 {
+	return matrix3{
+		{mat[0][0], mat[0][1], mat[0][2]},
+		{mat[1][0], mat[1][1], mat[1][2]},
+		{mat[2][0], mat[2][1], mat[2][2]},
+	}
+}
+
+func (mat matrix3) String() string {
+	str := ""
+
+	for i := 0; i < 3; i++ {
+
+		if i == 0 {
+			str += "X: {"
+		} else if i == 1 {
+			str += "Y: {"
+		} else {
+			str += "Z: {"
+		}
+
+		for j := 0; j < 3; j++ {
+			str += strconv.FormatFloat(mat[i][j], 'f', 2, 64)
+			if j < 2 {
+				str += ", "
+			}
+		}
+
+		str += "}"
+
+		if i < 2 {
+			str += "\n"
+		}
+
+	}
+
+	str += ""
+
+	return str
+}
+
+type nodeInfoPacket struct {
+	ID       uint64
 	Position tetra3d.Vector
 	Scale    tetra3d.Vector
-	Rotation tetra3d.Quaternion
+	Rotation matrix3
+	Visible  bool
+	Type     tetra3d.NodeType
 }
 
-func NewNodeInfoPacket() *NodeInfoPacket {
-	return &NodeInfoPacket{}
+func newNodeInfoPacket() *nodeInfoPacket {
+	return &nodeInfoPacket{}
 }
 
-func (packet *NodeInfoPacket) Encode() p2p.Data {
+func (packet *nodeInfoPacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -260,34 +310,34 @@ func (packet *NodeInfoPacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeInfoPacket) Decode(req p2p.Data) error {
+func (packet *nodeInfoPacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeInfoPacket) DataType() string {
-	return PTNodeInfo
+func (packet *nodeInfoPacket) DataType() string {
+	return ptNodeInfo
 }
 
 //
 
 const (
-	MITIndent = iota
-	MITDeIndent
-	MITMoveUp
-	MITMoveDown
+	mitIndent = iota
+	mitDeIndent
+	mitMoveUp
+	mitMoveDown
 )
 
-type NodeMoveInTreePacket struct {
+type nodeMoveInTreePacket struct {
 	MoveDir         int
 	NewSelectedNode uint64
-	SceneTree       SceneNode
+	SceneTree       sceneNode
 }
 
-func NewNodeMoveInTreePacket(moveDir int) *NodeMoveInTreePacket {
-	return &NodeMoveInTreePacket{MoveDir: moveDir}
+func newNodeMoveInTreePacket(moveDir int) *nodeMoveInTreePacket {
+	return &nodeMoveInTreePacket{MoveDir: moveDir}
 }
 
-func (packet *NodeMoveInTreePacket) Encode() p2p.Data {
+func (packet *nodeMoveInTreePacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -296,30 +346,30 @@ func (packet *NodeMoveInTreePacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeMoveInTreePacket) Decode(req p2p.Data) error {
+func (packet *nodeMoveInTreePacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeMoveInTreePacket) DataType() string {
-	return PTNodeMoveInTree
+func (packet *nodeMoveInTreePacket) DataType() string {
+	return ptNodeMoveInTree
 }
 
 //
 
-type NodeCreatePacket struct {
+type nodeCreatePacket struct {
 	NodeToCreate string
 
 	ViableNodes []string
 
 	NewSelectedNode uint64
-	SceneTree       SceneNode
+	SceneTree       sceneNode
 }
 
-func NewNodeCreatePacket() *NodeCreatePacket {
-	return &NodeCreatePacket{}
+func newNodeCreatePacket() *nodeCreatePacket {
+	return &nodeCreatePacket{}
 }
 
-func (packet *NodeCreatePacket) Encode() p2p.Data {
+func (packet *nodeCreatePacket) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -328,10 +378,65 @@ func (packet *NodeCreatePacket) Encode() p2p.Data {
 	return data
 }
 
-func (packet *NodeCreatePacket) Decode(req p2p.Data) error {
+func (packet *nodeCreatePacket) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *NodeCreatePacket) DataType() string {
-	return PTNodeCreate
+func (packet *nodeCreatePacket) DataType() string {
+	return ptNodeCreate
+}
+
+/////
+
+type gameInfoPacket struct {
+	FPS, TPS  float32
+	DebugInfo tetra3d.DebugInfo
+}
+
+func newGameInfoPacket() *gameInfoPacket {
+	return &gameInfoPacket{}
+}
+
+func (packet *gameInfoPacket) Encode() p2p.Data {
+	data := p2p.Data{}
+	err := data.SetGob(packet)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func (packet *gameInfoPacket) Decode(req p2p.Data) error {
+	return req.GetGob(&packet)
+}
+
+func (packet *gameInfoPacket) DataType() string {
+	return ptGameInfo
+}
+
+/////
+
+type toggleDebugDraw struct {
+	DebugDrawOn bool
+}
+
+func newToggleDebugDraw() *toggleDebugDraw {
+	return &toggleDebugDraw{}
+}
+
+func (packet *toggleDebugDraw) Encode() p2p.Data {
+	data := p2p.Data{}
+	err := data.SetGob(packet)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func (packet *toggleDebugDraw) Decode(req p2p.Data) error {
+	return req.GetGob(&packet)
+}
+
+func (packet *toggleDebugDraw) DataType() string {
+	return ptToggleDebugDraw
 }

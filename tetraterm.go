@@ -63,24 +63,24 @@ func (el emptyLogger) Info(msg string)  {}
 func (el emptyLogger) Warn(msg string)  {}
 func (el emptyLogger) Error(msg string) {}
 
-type SceneNode struct {
+type sceneNode struct {
 	Name     string
 	NodeID   uint64
-	Children []SceneNode
+	Children []sceneNode
 
 	// Extra Stuff
-	parent *SceneNode
+	parent *sceneNode
 }
 
-func (st SceneNode) ChildrenRecursive() []SceneNode {
-	out := []SceneNode{st}
+func (st sceneNode) ChildrenRecursive() []sceneNode {
+	out := []sceneNode{st}
 	for _, child := range st.Children {
 		out = append(out, child.ChildrenRecursive()...)
 	}
 	return out
 }
 
-func (st *SceneNode) Count() int {
+func (st *sceneNode) Count() int {
 	count := 1
 	for _, child := range st.Children {
 		count += child.Count()
@@ -88,19 +88,19 @@ func (st *SceneNode) Count() int {
 	return count
 }
 
-func (st *SceneNode) ResetParenting() {
+func (st *sceneNode) ResetParenting() {
 	for c := range st.Children {
 		st.Children[c].parent = st
 		st.Children[c].ResetParenting()
 	}
 }
 
-func constructNodeTree(t3dNode tetra3d.INode) SceneNode {
+func constructNodeTree(t3dNode tetra3d.INode) sceneNode {
 
-	sceneNode := SceneNode{
+	sceneNode := sceneNode{
 		Name:     t3dNode.Name(),
 		NodeID:   t3dNode.ID(),
-		Children: []SceneNode{},
+		Children: []sceneNode{},
 	}
 
 	for _, child := range t3dNode.Children() {
@@ -130,13 +130,15 @@ func NewDefaultConnectionSettings() *ConnectionSettings {
 // Note that this handles and records various settings to enable debugging simply and easily,
 // so it's best to not instantiate a Server when shipping a release version of your game.
 type Server struct {
-	p2pServer    *p2p.Server
-	Library      *tetra3d.Library
-	activeScene  *tetra3d.Scene
-	ogTransforms map[tetra3d.INode]ogLocalTransform
-	prevScene    *tetra3d.Scene
-	t3dCamera    *tetra3d.Camera
-	selectedNode tetra3d.INode
+	P2PServer     *p2p.Server
+	activeLibrary *tetra3d.Library
+	activeScene   *tetra3d.Scene
+	ogTransforms  map[tetra3d.INode]ogLocalTransform
+	prevScene     *tetra3d.Scene
+	t3dCamera     *tetra3d.Camera
+	selectedNode  tetra3d.INode
+
+	DebugDraw bool
 }
 
 // NewServer returns a new server, listening on the specified port number string (like "8000").
@@ -149,8 +151,8 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 	}
 
 	server := &Server{
-		Library:      scene.Library(),
-		selectedNode: scene.Root,
+		activeLibrary: scene.Library(),
+		selectedNode:  scene.Root,
 	}
 
 	port := p2p.NewTCP(settings.Host, settings.Port)
@@ -164,35 +166,16 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 		s.SetLogger(emptyLogger{})
 	}
 
-	server.p2pServer = s
+	server.P2PServer = s
 
-	s.SetHandle(PTNodeFollowCamera, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptNodeFollowCamera, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		if server.selectedNode != server.t3dCamera {
-			server.selectedNode.AddChildren(server.t3dCamera)
-			server.t3dCamera.ResetLocalTransform()
-			server.t3dCamera.Move(0, 0, 10)
-		}
+		if server.t3dCamera != nil {
 
-		return
-
-	})
-
-	s.SetHandle(PTNodeSelect, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
-
-		packet := &NodeSelectPacket{}
-		err = packet.Decode(req)
-		if err != nil {
-			panic(err)
-		}
-
-		nodes := append([]tetra3d.INode{server.activeScene.Root}, server.activeScene.Root.ChildrenRecursive()...)
-
-		for _, node := range nodes {
-
-			if node.ID() == packet.NodeID {
-				server.selectedNode = node
-				break
+			if server.selectedNode != server.t3dCamera {
+				server.selectedNode.AddChildren(server.t3dCamera)
+				server.t3dCamera.ResetLocalTransform()
+				server.t3dCamera.Move(0, 0, 10)
 			}
 
 		}
@@ -201,57 +184,133 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 
 	})
 
-	s.SetHandle(PTNodeMove, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptToggleDebugDraw, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		packet := &NodeMovePacket{}
+		server.DebugDraw = !server.DebugDraw
+
+		packet := toggleDebugDraw{}
 		packet.Decode(req)
-		server.selectedNode.Move(packet.X, packet.Y, packet.Z)
+		packet.DebugDrawOn = server.DebugDraw
+		res = packet.Encode()
+
 		return
 
 	})
 
-	s.SetHandle(PTNodeRotate, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptNodeSelect, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		packet := &NodeRotatePacket{}
-		packet.Decode(req)
-		server.selectedNode.Rotate(packet.X, packet.Y, packet.Z, packet.Angle)
+		packet := &nodeSelectPacket{}
+		err = packet.Decode(req)
+		if err != nil {
+			panic(err)
+		}
+
+		if server.activeScene != nil {
+
+			nodes := append([]tetra3d.INode{server.activeScene.Root}, server.activeScene.Root.ChildrenRecursive()...)
+
+			for _, node := range nodes {
+
+				if node.ID() == packet.NodeID {
+					server.selectedNode = node
+					break
+				}
+
+			}
+
+		}
+
 		return
 
 	})
 
-	s.SetHandle(PTNodeReset, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptNodeMove, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		packet := &NodeResetPacket{}
-		packet.Decode(req)
+		if server.selectedNode != nil {
+
+			packet := &nodeMovePacket{}
+			packet.Decode(req)
+			server.selectedNode.Move(packet.X, packet.Y, packet.Z)
+
+		}
+
+		return
+
+	})
+
+	s.SetHandle(ptNodeRotate, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+
+		if server.selectedNode != nil {
+
+			packet := &nodeRotatePacket{}
+			packet.Decode(req)
+			server.selectedNode.Rotate(packet.X, packet.Y, packet.Z, packet.Angle)
+
+		}
+
+		return
+
+	})
+
+	s.SetHandle(ptNodeReset, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+
 		server.resetSelectedNode()
 		return
 
 	})
 
-	s.SetHandle(PTNodeInfo, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptNodeInfo, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		packet := &NodeInfoPacket{}
-		packet.Decode(req)
-		packet.Position = server.selectedNode.LocalPosition()
-		packet.Scale = server.selectedNode.LocalScale()
-		packet.Rotation = server.selectedNode.LocalRotation().ToQuaternion()
+		if server.selectedNode != nil {
+
+			packet := &nodeInfoPacket{}
+			packet.ID = server.selectedNode.ID()
+			packet.Position = server.selectedNode.LocalPosition()
+			packet.Scale = server.selectedNode.LocalScale()
+			packet.Rotation = matrix4ToMatrix3(server.selectedNode.LocalRotation())
+			packet.Visible = server.selectedNode.Visible()
+			packet.Type = server.selectedNode.Type()
+			res = packet.Encode()
+
+		}
+
+		return
+
+	})
+
+	s.SetHandle(ptGameInfo, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+
+		// We don't need to decode this packet because the client is asking for this, and has nothing to
+		// give us.
+		packet := &gameInfoPacket{
+			FPS: float32(ebiten.ActualFPS()),
+			TPS: float32(ebiten.ActualTPS()),
+			// ModelCount: server.activeScene.Root.ChildrenRecursive().ByType(tetra3d.NodeTypeModel).,
+		}
+
+		if server.t3dCamera != nil {
+
+			packet.DebugInfo = server.t3dCamera.DebugInfo
+
+		}
+
 		res = packet.Encode()
 		return
 
 	})
 
-	s.SetHandle(PTNodeCreate, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptNodeCreate, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		packet := &NodeCreatePacket{}
+		packet := &nodeCreatePacket{}
 		packet.Decode(req)
 
 		if packet.NodeToCreate == "" {
 
-			if server.Library != nil {
+			if server.activeLibrary != nil {
 
 				nodeNames := []string{}
 
-				for _, s := range server.Library.Scenes {
+				for _, s := range server.activeLibrary.Scenes {
 					for _, child := range s.Root.ChildrenRecursive() {
 						candidate := child.Name()
 						exists := false
@@ -268,42 +327,49 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 				}
 
 				packet.ViableNodes = nodeNames
-
+				res = packet.Encode()
+				return
 			}
 
 		} else {
 
 			var scenesToSearch []*tetra3d.Scene
 
-			if server.Library != nil {
-				scenesToSearch = server.Library.Scenes
+			if server.activeLibrary != nil {
+				scenesToSearch = server.activeLibrary.Scenes
 			} else {
 				scenesToSearch = []*tetra3d.Scene{server.activeScene}
 			}
 
 			for _, scene := range scenesToSearch {
+
 				for _, node := range scene.Root.ChildrenRecursive() {
+
 					if node.Name() == packet.NodeToCreate {
+
 						clone := node.Clone()
 						server.activeScene.Root.AddChildren(clone)
 						packet.NewSelectedNode = clone.ID()
 						server.selectedNode = clone
 						packet.SceneTree = constructNodeTree(server.activeScene.Root)
+						res = packet.Encode()
+						return
+
 					}
+
 				}
+
 			}
 
 		}
-
-		res = packet.Encode()
 
 		return
 
 	})
 
-	s.SetHandle(PTNodeDuplicate, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptNodeDuplicate, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		packet := &NodeDuplicatePacket{}
+		packet := &nodeDuplicatePacket{}
 		packet.Decode(req)
 
 		if server.selectedNode != server.activeScene.Root {
@@ -329,9 +395,9 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 
 	})
 
-	s.SetHandle(PTNodeDelete, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptNodeDelete, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		packet := &NodeDeletePacket{}
+		packet := &nodeDeletePacket{}
 		packet.Decode(req)
 		if server.selectedNode != server.activeScene.Root {
 
@@ -360,24 +426,24 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 
 	})
 
-	s.SetHandle(PTNodeMoveInTree, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptNodeMoveInTree, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		packet := &NodeMoveInTreePacket{}
+		packet := &nodeMoveInTreePacket{}
 		packet.Decode(req)
 
 		if server.selectedNode != server.activeScene.Root {
 
 			node := server.selectedNode
 			switch packet.MoveDir {
-			case MITMoveUp:
+			case mitMoveUp:
 				node.Parent().ReindexChild(node, node.Index()-1)
-			case MITMoveDown:
+			case mitMoveDown:
 				node.Parent().ReindexChild(node, node.Index()+1)
-			case MITIndent:
+			case mitIndent:
 				if node.Index() > 0 {
 					node.Parent().Children()[node.Index()-1].AddChildren(node)
 				}
-			case MITDeIndent:
+			case mitDeIndent:
 				if node.Parent() != node.Root() {
 					ogParentIndex := node.Parent().Index()
 					node.Parent().Parent().AddChildren(node)
@@ -396,9 +462,9 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 
 	})
 
-	s.SetHandle(PTSceneRefresh, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptSceneRefresh, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		packet := &SceneRefreshPacket{}
+		packet := &sceneRefreshPacket{}
 		err = packet.Decode(req)
 
 		if err != nil {
@@ -426,7 +492,7 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 	})
 
 	go func() {
-		if err := server.p2pServer.Serve(); err != nil {
+		if err := server.P2PServer.Serve(); err != nil {
 			panic(err)
 		}
 	}()
@@ -435,15 +501,16 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 
 }
 
-// Update updates the server as necessary.
+// Update updates the server as necessary. This should be called every tick.
 func (server *Server) Update(scene *tetra3d.Scene) {
 	server.activeScene = scene
-	server.Library = scene.Library()
+	server.activeLibrary = scene.Library()
 
 	if server.selectedNode == nil {
 		server.selectedNode = server.activeScene.Root
 	}
 
+	// Scene changed, so we can empty the og transforms list.
 	if server.activeScene != server.prevScene {
 		server.ogTransforms = map[tetra3d.INode]ogLocalTransform{}
 	}
@@ -463,23 +530,27 @@ func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 
 	server.t3dCamera = camera
 
-	camera.DrawDebugCenters(screen, server.selectedNode, colors.White())
+	if server.DebugDraw {
 
-	draw := func(node tetra3d.INode) {
-		if node != camera {
-			pos := camera.WorldToScreen(node.WorldPosition())
-			color := colors.Gray()
-			if node == server.selectedNode {
-				color = colors.White()
+		camera.DrawDebugCenters(screen, server.selectedNode, colors.White())
+
+		draw := func(node tetra3d.INode) {
+			if node != camera {
+				pos := camera.WorldToScreen(node.WorldPosition())
+				color := colors.Gray()
+				if node == server.selectedNode {
+					color = colors.White()
+				}
+				camera.DebugDrawText(screen, node.Name(), pos.X, pos.Y, 1, color)
 			}
-			camera.DebugDrawText(screen, node.Name(), pos.X, pos.Y, 1, color)
 		}
-	}
 
-	draw(server.selectedNode)
+		draw(server.selectedNode)
 
-	for _, n := range server.selectedNode.ChildrenRecursive() {
-		draw(n)
+		for _, n := range server.selectedNode.ChildrenRecursive() {
+			draw(n)
+		}
+
 	}
 
 }
@@ -494,10 +565,14 @@ func (server *Server) recordOGTransforms(node tetra3d.INode) {
 
 func (server *Server) resetSelectedNode() {
 
-	server.ogTransforms[server.selectedNode].Apply(true)
+	if server.selectedNode != nil {
 
-	for _, node := range server.selectedNode.ChildrenRecursive() {
-		server.ogTransforms[node].Apply(false)
+		server.ogTransforms[server.selectedNode].Apply(true)
+
+		for _, node := range server.selectedNode.ChildrenRecursive() {
+			server.ogTransforms[node].Apply(false)
+		}
+
 	}
 
 }
@@ -515,7 +590,7 @@ type Display struct {
 	Root *tview.Pages
 
 	running          atomic.Bool
-	currentSceneTree SceneNode
+	currentSceneTree sceneNode
 
 	receivingData atomic.Bool
 
@@ -524,20 +599,21 @@ type Display struct {
 	TreeNodeRoot *tview.TreeNode
 	TreeView     *tview.TreeView
 
-	propertyArea *tview.TextArea
+	NodePropertyArea *tview.TextArea
+	GamePropertyArea *tview.TextArea
 
-	searchBar                           *tview.InputField
-	searchBarCloneMode                  bool
-	searchBarCloneModeAutocompleteNames []string
+	SearchBar                           *tview.InputField
+	SearchBarCloneMode                  bool
+	SearchBarCloneModeAutocompleteNames []string
 
 	// prevSceneData map[tetra3d.INode]string
 
 	// propertyText *tview.TextArea
 
-	selectNextNode      bool
-	selectNextNodeIndex uint64
+	SelectNextNode      bool
+	SelectNextNodeIndex uint64
 
-	sceneNodesToTreeNodes map[uint64]*tview.TreeNode
+	SceneNodesToTreeNodes map[uint64]*tview.TreeNode
 	// DebugDraw    bool
 
 	// deleteNode        bool
@@ -564,7 +640,7 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 		App:     tview.NewApplication(),
 		running: atomic.Bool{},
 
-		sceneNodesToTreeNodes: map[uint64]*tview.TreeNode{},
+		SceneNodesToTreeNodes: map[uint64]*tview.TreeNode{},
 
 		// Flexbox: tview.NewFlex(),
 
@@ -579,6 +655,19 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 	/////////
 
 	app.Root = tview.NewPages()
+	app.Root.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+
+		if event.Rune() == '1' {
+			app.sendRequest(newToggleDebugDraw())
+		}
+
+		if event.Key() == tcell.KeyCtrlQ {
+			app.App.Stop()
+		}
+
+		return event
+
+	})
 	app.App.SetRoot(app.Root, true)
 
 	app.TreeView = tview.NewTreeView()
@@ -604,8 +693,8 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 
 	leftSide.AddItem(app.TreeView, 0, 2, true)
 
-	app.searchBar = tview.NewInputField()
-	app.searchBar.SetAutocompleteFunc(func(currentText string) (entries []string) {
+	app.SearchBar = tview.NewInputField()
+	app.SearchBar.SetAutocompleteFunc(func(currentText string) (entries []string) {
 
 		if currentText == "" {
 			return
@@ -613,8 +702,8 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 
 		var nodeNames []string
 
-		if app.searchBarCloneMode {
-			nodeNames = app.searchBarCloneModeAutocompleteNames
+		if app.SearchBarCloneMode {
+			nodeNames = app.SearchBarCloneModeAutocompleteNames
 		} else {
 
 			nodeNames = []string{app.currentSceneTree.Name}
@@ -634,37 +723,39 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 		return
 
 	})
-	app.searchBar.SetLabel("Search Node: ")
-	app.searchBar.SetLabelColor(tcell.ColorLightBlue)
-	app.searchBar.SetFieldBackgroundColor(tcell.ColorDarkSlateBlue)
-	app.searchBar.SetFieldTextColor(tcell.ColorLightBlue)
+	app.SearchBar.SetLabel("Search Node: ")
+	app.SearchBar.SetLabelColor(tcell.ColorLightBlue)
+	app.SearchBar.SetFieldBackgroundColor(tcell.ColorDarkSlateBlue)
+	app.SearchBar.SetFieldTextColor(tcell.ColorLightBlue)
 
-	app.searchBar.SetChangedFunc(func(text string) {
-
-		if app.searchBarCloneMode {
-			res, err := app.sendRequest(NewNodeCreatePacket())
-			if err != nil {
-				log.Println(err)
-			} else if res.(*NodeCreatePacket).ViableNodes != nil {
-				app.searchBarCloneModeAutocompleteNames = res.(*NodeCreatePacket).ViableNodes
-			}
-		}
-
-		// Hacky fix
-		app.TreeView.GetRoot().ExpandAll()
+	app.SearchBar.SetChangedFunc(func(text string) {
 
 		if text != "" {
 
-			nodesToSearch := append([]SceneNode{app.currentSceneTree}, app.currentSceneTree.ChildrenRecursive()...)
+			if app.SearchBarCloneMode {
+				res, err := app.sendRequest(newNodeCreatePacket())
+				if err != nil {
+					log.Println(err)
+				} else if res.(*nodeCreatePacket).ViableNodes != nil {
+					app.SearchBarCloneModeAutocompleteNames = res.(*nodeCreatePacket).ViableNodes
+				}
+			} else {
 
-			for _, node := range nodesToSearch {
+				// Hacky fix
+				app.TreeView.GetRoot().ExpandAll()
 
-				if strings.Contains(strings.ToLower(node.Name), strings.ToLower(text)) {
-					treeNode := app.sceneNodesToTreeNodes[node.NodeID]
-					treeNode.ExpandAll()
-					app.TreeView.SetCurrentNode(treeNode)
-					app.sendRequest(NewNodeSelectPacket(node.NodeID))
-					break
+				nodesToSearch := append([]sceneNode{app.currentSceneTree}, app.currentSceneTree.ChildrenRecursive()...)
+
+				for _, node := range nodesToSearch {
+
+					if strings.Contains(strings.ToLower(node.Name), strings.ToLower(text)) {
+						treeNode := app.SceneNodesToTreeNodes[node.NodeID]
+						treeNode.ExpandAll()
+						app.TreeView.SetCurrentNode(treeNode)
+						app.sendRequest(newNodeSelectPacket(node.NodeID))
+						break
+					}
+
 				}
 
 			}
@@ -673,71 +764,86 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 
 	})
 
-	// TODO: Be able to search for node by type or tag?
-
-	// TODO: Pressing Shift+F while the search box is highlit should search for the next occurance
-	// of the name
-	// app.searchBar.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-	// 	if event.Rune() == 'F' {
-	// 	}
-	// })
-
-	app.searchBar.SetDoneFunc(func(key tcell.Key) {
-		if app.searchBarCloneMode && key == tcell.KeyEnter {
-			np := NewNodeCreatePacket()
-			np.NodeToCreate = app.searchBar.GetText()
+	app.SearchBar.SetDoneFunc(func(key tcell.Key) {
+		if app.SearchBarCloneMode && key == tcell.KeyEnter {
+			np := newNodeCreatePacket()
+			np.NodeToCreate = app.SearchBar.GetText()
 			res, err := app.sendRequest(np)
 			if err != nil {
 				log.Println(err)
 			} else {
-				app.selectNextNode = true
-				app.currentSceneTree = res.(*NodeCreatePacket).SceneTree
-				app.selectNextNodeIndex = res.(*NodeCreatePacket).NewSelectedNode
+				app.SelectNextNode = true
+				app.currentSceneTree = res.(*nodeCreatePacket).SceneTree
+				app.SelectNextNodeIndex = res.(*nodeCreatePacket).NewSelectedNode
 			}
 		}
 		app.App.SetFocus(app.TreeView)
 	})
 
-	leftSide.AddItem(app.searchBar, 1, 0, false)
+	leftSide.AddItem(app.SearchBar, 1, 0, false)
 
 	//
 
-	helpText := `Arrow Keys: Select Node
-wasd, qe: Move Node in-game
-r: Reset Node Position / Parent
+	helpText := combineStrings(
+		"Welcome to TetraTerm!",
+		"\n",
+		"\n",
+		"With TetraTerm, you can easily see and",
+		"modify game data while it is running, making",
+		"debugging and the flow of game development smoother.",
+		"\n",
+		"\n",
+		"By default, TetraTerm will connect on port 7979.",
+		"Just run your game after having created a TetraTerm.Server,",
+		"and the terminal should pick it up automatically.",
+	)
 
-f: Follow Node with Camera
-Shift+F: Search
+	keyText := `KEYS
 
-Shift+Arrows: Change Index / Parenting
-
+Arrow Keys: Select Node
+Shift+Arrows: Change Order / Parent
+WASD, QE: Move Node in-game
+R: Reset Selected Node
 Shift+D: Duplicate Node
 Shift+X: Delete Node
 
-F2: Search
-	`
+F: Follow Node with Camera
+Shift+F: Search Nodes
+Shift+C: Clone Nodes
+
+Ctrl+Q : Quit (Ctrl+C also works)
+`
+
+	cloneText := combineStrings(
+		"CLONING",
+		"\n",
+		"\n",
+		"When you press Ctrl+C, you go into clone mode.",
+		"In Clone Mode, you can specify any Node by name and clone it,",
+		"reparenting it to the currently selected Node.",
+		"\n",
+		"\n",
+		"The Node to clone can come from any Scene in the current Library.",
+	)
 
 	rightSide := tview.NewFlex()
 	rightSide.SetDirection(tview.FlexRow)
 	treeFlex.AddItem(rightSide, 0, 1, false)
 
-	t := tview.NewTextArea().SetText(helpText, false)
-	t.SetBorder(true).SetTitle("[ Keys ]")
-	rightSide.AddItem(t, 0, 1, false)
-	// treeFlex.SetDirection(tview.FlexRow)
+	keysExplanation := newMultipageModal(app, "key explanation", helpText, keyText, cloneText)
 
-	app.propertyArea = tview.NewTextArea()
-	app.propertyArea.SetBorder(true)
-	app.propertyArea.SetTitle("[ Properties ]")
-	rightSide.AddItem(app.propertyArea, 0, 1, false)
+	app.NodePropertyArea = tview.NewTextArea()
+	app.NodePropertyArea.SetBorder(true)
+	app.NodePropertyArea.SetTitle("[ Node Properties ]")
+	rightSide.AddItem(app.NodePropertyArea, 0, 2, false)
+
+	app.GamePropertyArea = tview.NewTextArea()
+	app.GamePropertyArea.SetBorder(true)
+	app.GamePropertyArea.SetTitle("[ Game Properties ]")
+	rightSide.AddItem(app.GamePropertyArea, 0, 1, false)
 
 	app.Root.AddAndSwitchToPage("Tree View", treeFlex, true)
-
-	// debugText := tview.NewTextArea()
-
-	// // app.App.SetAfterDrawFunc(func(screen tcell.Screen) {
-	// // 	// log.Println(resp)
-	// // })
+	app.Root.AddPage(keysExplanation.Name, keysExplanation, true, false)
 
 	go func() {
 
@@ -746,43 +852,42 @@ F2: Search
 			time.Sleep(time.Millisecond * 250)
 			app.receivingData.Store(true)
 
-			resp, err := app.sendRequest(NewSceneRefreshPacket())
+			resp, err := app.sendRequest(newSceneRefreshPacket())
 
 			if err != nil {
 				if err.Error() == "EOF" {
 					// Attempt to reopen connection
 					// log.Println("Request failed, attempting to reopen connection:")
 					app.initClient()
-					app.App.Draw()
 				} else {
 					panic(err)
 				}
 			} else {
-				app.currentSceneTree = resp.(*SceneRefreshPacket).SceneTree
+				app.currentSceneTree = resp.(*sceneRefreshPacket).SceneTree
 
 				app.currentSceneTree.ResetParenting()
 
 				for _, node := range app.currentSceneTree.ChildrenRecursive() {
 
-					existingNode, exists := app.sceneNodesToTreeNodes[node.NodeID]
+					existingNode, exists := app.SceneNodesToTreeNodes[node.NodeID]
 
 					if !exists {
 						tn := tview.NewTreeNode(node.Name)
 						tn.SetSelectable(true)
 						tn.SetReference(node)
-						app.sceneNodesToTreeNodes[node.NodeID] = tn
+						app.SceneNodesToTreeNodes[node.NodeID] = tn
 						existingNode = tn
 					}
 
 					existingNode.ClearChildren()
 
 					if node.parent != nil {
-						app.sceneNodesToTreeNodes[node.parent.NodeID].AddChild(existingNode)
+						app.SceneNodesToTreeNodes[node.parent.NodeID].AddChild(existingNode)
 					}
 
 				}
 
-				app.TreeNodeRoot = app.sceneNodesToTreeNodes[app.currentSceneTree.NodeID]
+				app.TreeNodeRoot = app.SceneNodesToTreeNodes[app.currentSceneTree.NodeID]
 				app.TreeNodeRoot.SetSelectable(true)
 				app.TreeNodeRoot.SetColor(tcell.ColorSkyblue)
 				app.TreeView.SetRoot(app.TreeNodeRoot)
@@ -790,9 +895,9 @@ F2: Search
 					app.TreeView.SetCurrentNode(app.TreeNodeRoot)
 				}
 
-				if app.selectNextNode {
-					app.TreeView.SetCurrentNode(app.sceneNodesToTreeNodes[app.selectNextNodeIndex])
-					app.selectNextNode = false
+				if app.SelectNextNode {
+					app.TreeView.SetCurrentNode(app.SceneNodesToTreeNodes[app.SelectNextNodeIndex])
+					app.SelectNextNode = false
 				}
 
 				app.updateTreeNodeNames()
@@ -808,18 +913,53 @@ F2: Search
 
 	go func() {
 		for {
+
 			time.Sleep(time.Millisecond * 100)
 
-			app.TreeView.SetTitle(fmt.Sprintf("[ ◆ Node Tree ] x [%d Nodes]", app.currentSceneTree.Count()))
+			app.TreeView.SetTitle("[ ◆ Node Tree ]")
 
-			resp, err := app.sendRequest(NewNodeInfoPacket())
+			resp, err := app.sendRequest(newNodeInfoPacket())
 			if err != nil {
 				log.Println(err)
 			} else {
-				info := resp.(*NodeInfoPacket)
-				text := fmt.Sprintf("Pos:%v\nSca:%v\nRot:%v", info.Position, info.Scale, info.Rotation)
+				info := resp.(*nodeInfoPacket)
+				text := fmt.Sprintf("ID:%d\nVisible:%t\nType:%s\n\nPos:%v\nSca:%v\nRot:\n%v", info.ID, info.Visible, info.Type, info.Position, info.Scale, info.Rotation)
+				app.App.QueueUpdateDraw(func() {
+					app.NodePropertyArea.SetText(text, false)
+				})
+				// fmt.Println(info)
+			}
+
+			// app.receivingData.Store(true)
+			// app.receivingData.Store(false)
+		}
+	}()
+
+	go func() {
+		for {
+			time.Sleep(time.Millisecond * 200)
+
+			resp, err := app.sendRequest(newGameInfoPacket())
+			if err != nil {
+				log.Println(err)
+			} else {
+				info := resp.(*gameInfoPacket)
+
+				m := info.DebugInfo.AvgFrameTime.Round(time.Microsecond).Microseconds()
+				ft := fmt.Sprintf("%.2fms", float32(m)/1000)
+
+				text := fmt.Sprintf(
+					"FPS:%v\nTPS:%v\nTotal Nodes: %d\nAvg. Frame-time: %s\nDrawn MeshParts: %d/%d\nDrawn Triangles: %d/%d",
+					info.FPS, info.TPS,
+					app.currentSceneTree.Count(),
+					ft,
+					info.DebugInfo.DrawnParts,
+					info.DebugInfo.TotalParts,
+					info.DebugInfo.DrawnTris,
+					info.DebugInfo.TotalTris)
+
 				app.App.QueueUpdate(func() {
-					app.propertyArea.SetText(text, false)
+					app.GamePropertyArea.SetText(text, false)
 				})
 				// fmt.Println(info)
 			}
@@ -830,7 +970,7 @@ F2: Search
 	}()
 
 	app.TreeView.SetChangedFunc(func(node *tview.TreeNode) {
-		app.sendRequest(NewNodeSelectPacket(node.GetReference().(SceneNode).NodeID))
+		app.sendRequest(newNodeSelectPacket(node.GetReference().(sceneNode).NodeID))
 	})
 
 	app.TreeView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -845,48 +985,48 @@ F2: Search
 		// }
 
 		if event.Rune() == 'f' {
-			app.sendRequest(NewNodeFollowCameraPacket())
+			app.sendRequest(newNodeFollowCameraPacket())
 			return nil
 		}
 
 		if event.Rune() == 'F' {
-			app.searchBar.SetText("")
-			app.searchBar.SetLabel("Search Node: ")
-			app.searchBarCloneMode = false
-			app.App.SetFocus(app.searchBar)
+			app.SearchBar.SetText("")
+			app.SearchBar.SetLabel("Search Node: ")
+			app.SearchBarCloneMode = false
+			app.App.SetFocus(app.SearchBar)
 			return nil
 		}
 
 		if event.Rune() == 'C' {
-			app.searchBar.SetText("")
-			app.searchBar.SetLabel("Clone Node: ")
-			app.searchBarCloneMode = true
-			app.App.SetFocus(app.searchBar)
+			app.SearchBar.SetText("")
+			app.SearchBar.SetLabel("Clone Node: ")
+			app.SearchBarCloneMode = true
+			app.App.SetFocus(app.SearchBar)
 			return nil
 		}
 
 		if event.Rune() == 'D' {
 			app.receivingData.Store(true)
-			res, err := app.sendRequest(NewNodeDuplicatePacket())
+			res, err := app.sendRequest(newNodeDuplicatePacket())
 			if err != nil {
 				log.Println(err)
 			} else {
-				app.selectNextNode = true
-				app.currentSceneTree = res.(*NodeDuplicatePacket).SceneTree
-				app.selectNextNodeIndex = res.(*NodeDuplicatePacket).NewSelectedNode
+				app.SelectNextNode = true
+				app.currentSceneTree = res.(*nodeDuplicatePacket).SceneTree
+				app.SelectNextNodeIndex = res.(*nodeDuplicatePacket).NewSelectedNode
 			}
 			app.receivingData.Store(false)
 			return nil
 		}
 		if event.Rune() == 'X' {
 			app.receivingData.Store(true)
-			res, err := app.sendRequest(NewNodeDeletePacket())
+			res, err := app.sendRequest(newNodeDeletePacket())
 			if err != nil {
 				log.Println(err)
 			} else {
-				app.selectNextNode = true
-				app.currentSceneTree = res.(*NodeDeletePacket).SceneTree
-				app.selectNextNodeIndex = res.(*NodeDeletePacket).NewSelectedNode
+				app.SelectNextNode = true
+				app.currentSceneTree = res.(*nodeDeletePacket).SceneTree
+				app.SelectNextNodeIndex = res.(*nodeDeletePacket).NewSelectedNode
 			}
 			app.receivingData.Store(false)
 			return nil
@@ -904,16 +1044,16 @@ F2: Search
 
 			switch event.Key() {
 			case tcell.KeyUp:
-				moveDir = MITMoveUp
+				moveDir = mitMoveUp
 			case tcell.KeyDown:
-				moveDir = MITMoveDown
+				moveDir = mitMoveDown
 			case tcell.KeyRight:
-				moveDir = MITIndent
+				moveDir = mitIndent
 			case tcell.KeyLeft:
-				moveDir = MITDeIndent
+				moveDir = mitDeIndent
 			}
 
-			packet := NewNodeMoveInTreePacket(moveDir)
+			packet := newNodeMoveInTreePacket(moveDir)
 
 			app.receivingData.Store(true)
 
@@ -921,9 +1061,9 @@ F2: Search
 			if err != nil {
 				log.Println(err)
 			} else {
-				app.selectNextNode = true
-				app.currentSceneTree = res.(*NodeMoveInTreePacket).SceneTree
-				app.selectNextNodeIndex = res.(*NodeMoveInTreePacket).NewSelectedNode
+				app.SelectNextNode = true
+				app.currentSceneTree = res.(*nodeMoveInTreePacket).SceneTree
+				app.SelectNextNodeIndex = res.(*nodeMoveInTreePacket).NewSelectedNode
 			}
 
 			app.receivingData.Store(false)
@@ -936,31 +1076,35 @@ F2: Search
 
 		moveDist := 1.0
 		if event.Rune() == 'w' {
-			app.sendRequest(NewNodeMovePacket(0, 0, -moveDist))
+			app.sendRequest(newNodeMovePacket(0, 0, -moveDist))
 			return nil
 		}
 		if event.Rune() == 'd' {
-			app.sendRequest(NewNodeMovePacket(moveDist, 0, 0))
+			app.sendRequest(newNodeMovePacket(moveDist, 0, 0))
 			return nil
 		}
 
 		if event.Rune() == 's' {
-			app.sendRequest(NewNodeMovePacket(0, 0, moveDist))
+			app.sendRequest(newNodeMovePacket(0, 0, moveDist))
 			return nil
 		}
 		if event.Rune() == 'a' {
-			app.sendRequest(NewNodeMovePacket(-moveDist, 0, 0))
+			app.sendRequest(newNodeMovePacket(-moveDist, 0, 0))
 			return nil
 		}
 
 		if event.Rune() == 'q' {
-			app.sendRequest(NewNodeMovePacket(0, -moveDist, 0))
+			app.sendRequest(newNodeMovePacket(0, -moveDist, 0))
 			return nil
 		}
 
 		if event.Rune() == 'e' {
-			app.sendRequest(NewNodeMovePacket(0, moveDist, 0))
+			app.sendRequest(newNodeMovePacket(0, moveDist, 0))
 			return nil
+		}
+
+		if event.Key() == tcell.KeyCtrlH {
+			app.Root.ShowPage("key explanation")
 		}
 
 		// if event.Rune() == 'z' {
@@ -992,41 +1136,12 @@ F2: Search
 
 		// Reset Node
 		if event.Rune() == 'r' {
-			app.sendRequest(NewNodeResetPacket())
+			app.sendRequest(newNodeResetPacket())
 			return nil
 		}
 
 		return event
 	})
-
-	// 	app.TreeNodeRoot = tview.NewTreeNode("ROOT").SetColor(tcell.ColorLightSkyBlue)
-	// 	app.TreeView = tview.NewTreeView().SetRoot(app.TreeNodeRoot).SetCurrentNode(app.TreeNodeRoot)
-	// 	app.TreeView.SetTitle("[ ◆ Node Tree ]")
-	// 	app.TreeView.Box.SetBorder(true)
-	// 	app.TreeView.SetGraphicsColor(tcell.ColorGreen)
-
-	// 	app.Flexbox.AddItem(app.TreeView, 0, 1, true)
-	// 	helpText := `f: Focus Camera
-	// Arrow Keys: Select Node
-	// wasd, qe: Move Node
-	// r: Reset Node
-	// Shift+Arrows: Change Parenting
-
-	// Shift+D: Duplicate Node
-	// Shift+X: Delete Node
-
-	// `
-	// 	flex := tview.NewFlex().SetDirection(tview.FlexRow)
-	// 	app.Flexbox.AddItem(flex, 0, 1, false)
-
-	// 	t := tview.NewTextArea().SetText(helpText, false)
-	// 	t.SetBorder(true).SetTitle("[ Keys ]")
-	// 	flex.AddItem(t, 0, 2, false)
-	// 	app.App.SetRoot(app.Flexbox, true)
-
-	// 	app.propertyText = tview.NewTextArea().SetText("Property text goes here", false)
-	// 	app.propertyText.SetBorder(true).SetTitle("[ Properties ]")
-	// 	flex.AddItem(app.propertyText, 0, 2, false)
 
 	return app
 
@@ -1051,6 +1166,10 @@ func (td *Display) initClient() {
 
 	td.Client = client
 
+	if td.running.Load() {
+		td.App.Sync()
+	}
+
 }
 
 func (td *Display) Start() error {
@@ -1071,7 +1190,7 @@ func (td *Display) Start() error {
 
 }
 
-func (td Display) sendRequest(packet IPacket) (IPacket, error) {
+func (td Display) sendRequest(packet iPacket) (iPacket, error) {
 
 	response, err := td.Client.Send(packet.DataType(), packet.Encode())
 	if err != nil {
@@ -1087,7 +1206,7 @@ func (display *Display) updateTreeNodeNames() {
 
 	for _, node := range display.currentSceneTree.ChildrenRecursive() {
 
-		tn := display.sceneNodesToTreeNodes[node.NodeID]
+		tn := display.SceneNodesToTreeNodes[node.NodeID]
 
 		name := node.Name
 
@@ -1098,7 +1217,7 @@ func (display *Display) updateTreeNodeNames() {
 				name = "[+] " + name
 			}
 		} else {
-			name = " +  " + name
+			name = " ◆ " + name
 		}
 
 		tn.SetText(name)
@@ -1126,175 +1245,80 @@ func (display *Display) updateTreeNodeNames() {
 
 }
 
-// func (app *TerminalApp) Recover() {
-// 	if result := recover(); result != nil {
-// 		app.App.Stop()
-// 		panic(result)
-// 	}
-// }
+type multipageModal struct {
+	Display *Display
+	Name    string
+	*tview.Pages
+}
 
-// func (app *TerminalApp) Draw(screen *ebiten.Image, scene *tetra3d.Scene) {
+func newMultipageModal(display *Display, name string, pageTexts ...string) *multipageModal {
 
-// 	if !app.stopped.Load() {
+	mp := &multipageModal{
+		Display: display,
+		Name:    name,
+		Pages:   tview.NewPages(),
+	}
 
-// 		app.TreeNodeRoot.SetReference(scene.Root)
+	for i, page := range pageTexts {
 
-// 		sceneChanged := app.forceSceneRebuild
-// 		app.forceSceneRebuild = false
+		pageNum := i
 
-// 		if len(scene.Root.ChildrenRecursive()) != len(app.prevSceneData) {
-// 			sceneChanged = true
-// 		} else {
+		modal := tview.NewModal()
 
-// 			for _, n := range scene.Root.ChildrenRecursive() {
-// 				if prevPath, ok := app.prevSceneData[n]; !ok || prevPath != n.Path() {
-// 					sceneChanged = true
-// 					break
-// 				}
-// 			}
+		modal.SetText(page)
+		if pageNum > 0 {
+			modal.AddButtons([]string{"Prev Page"})
+		}
+		modal.AddButtons([]string{"Close"})
+		if pageNum < len(pageTexts)-1 {
+			modal.AddButtons([]string{"Next Page"})
+		}
 
-// 		}
+		pageName := "Page " + strconv.Itoa(pageNum)
 
-// 		app.App.QueueUpdateDraw(func() {
+		page := mp.AddPage(pageName, modal, true, false)
 
-// 			if app.duplicateNode {
-// 				t3dNode := app.TreeView.GetCurrentNode().GetReference().(tetra3d.INode)
-// 				if t3dNode != scene.Root {
-// 					clone := t3dNode.Clone()
-// 					name := clone.Name()
-// 					a, _ := regexp.Compile("<[0123456789]{4}>")
-// 					if match := a.FindStringIndex(name); match != nil {
-// 						fmt.Println(match)
-// 						name = name[:match[0]]
-// 					}
-// 					clone.SetName(name + "<" + strconv.Itoa(rand.Intn(9999)) + ">")
-// 					t3dNode.Parent().AddChildren(clone)
+		modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 
-// 					tn := tview.NewTreeNode("")
-// 					tn.SetSelectable(true)
-// 					tn.SetReference(clone)
-// 					app.nodesToTreeNodes[clone] = tn
-// 					app.TreeView.SetCurrentNode(tn)
+			_, frontPage := page.GetFrontPage()
 
-// 					app.duplicateNode = false
-// 					sceneChanged = true
-// 				}
-// 			}
+			if modal == frontPage {
 
-// 			if app.deleteNode {
-// 				t3dNode := app.TreeView.GetCurrentNode().GetReference().(tetra3d.INode)
-// 				if t3dNode != scene.Root {
-// 					t3dNode.Unparent()
-// 					app.deleteNode = false
-// 					sceneChanged = true
-// 				}
-// 			}
+				if pageNum > 0 && buttonLabel == "Prev Page" {
+					mp.Pages.SwitchToPage("Page " + strconv.Itoa(pageNum-1))
+				} else if pageNum < len(pageTexts)-1 && buttonLabel == "Next Page" {
+					mp.Pages.SwitchToPage("Page " + strconv.Itoa(pageNum+1))
+				} else if buttonLabel == "Close" {
+					// page, _ := mp.GetFrontPage()
+					// mp.HidePage(page)
+					mp.Display.Root.HidePage(mp.Name)
+				}
 
-// 			if sceneChanged {
+			}
 
-// 				for _, node := range scene.Root.ChildrenRecursive() {
-// 					if _, exists := app.nodesToTreeNodes[node]; !exists {
-// 						tn := tview.NewTreeNode("")
-// 						tn.SetSelectable(true)
-// 						tn.SetReference(node)
-// 						app.nodesToTreeNodes[node] = tn
-// 					}
-// 				}
+		})
 
-// 				var setupTree func(node tetra3d.INode)
+		modal.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 
-// 				setupTree = func(node tetra3d.INode) {
+			if event.Key() == tcell.KeyEscape {
+				mp.Display.Root.HidePage(mp.Name)
+				return nil
+			}
 
-// 					var tn *tview.TreeNode
+			return event
 
-// 					if node == scene.Root {
-// 						tn = app.TreeNodeRoot
-// 					} else {
-// 						tn = app.nodesToTreeNodes[node]
-// 					}
+		})
 
-// 					tn.ClearChildren()
+		if i == 0 {
+			mp.SwitchToPage(pageName)
+		}
 
-// 					for _, child := range node.Children() {
-// 						tn.AddChild(app.nodesToTreeNodes[child])
-// 					}
+	}
 
-// 					for _, child := range node.Children() {
-// 						setupTree(child)
-// 					}
+	return mp
 
-// 				}
+}
 
-// 				setupTree(scene.Root)
-
-// 				app.updateTreeNodeNames()
-
-// 			}
-
-// 		})
-
-// 		if sceneChanged {
-// 			newMap := map[tetra3d.INode]string{}
-// 			for _, n := range scene.Root.ChildrenRecursive() {
-// 				newMap[n] = n.Path()
-// 			}
-// 			app.prevSceneData = newMap
-// 		}
-
-// 		tvNode := app.TreeView.GetCurrentNode()
-// 		if tvNode != nil {
-// 			t3dNode := tvNode.GetReference().(tetra3d.INode)
-
-// 			app.propertyText.SetText(
-// 				fmt.Sprintf("Pos: %s\nSca: %s\nRot:\n%s", t3dNode.WorldPosition(), t3dNode.WorldScale(), app.quatToShortString(t3dNode.WorldRotation().ToQuaternion())),
-// 				false,
-// 			)
-
-// 			app.Camera.DrawDebugCenters(screen, t3dNode, colors.White())
-
-// 			drawName := func(node tetra3d.INode) {
-// 				if node == app.Camera {
-// 					return
-// 				}
-// 				np := app.Camera.WorldToScreen(node.WorldPosition())
-// 				app.Camera.DebugDrawText(screen, node.Name(), np.X, np.Y, 1, colors.White())
-// 			}
-
-// 			drawName(t3dNode)
-
-// 			for _, node := range t3dNode.ChildrenRecursive() {
-// 				drawName(node)
-// 			}
-// 		}
-
-// 	}
-
-// }
-
-// func (ta *TerminalApp) Stop() {
-// 	ta.App.QueueUpdate(func() { ta.App.Stop() })
-// }
-
-// func (ta *TerminalApp) quatToShortString(quat tetra3d.Quaternion) string {
-// 	s := "{"
-// 	s += strconv.FormatFloat(quat.X, 'f', 2, 64) + ", "
-// 	s += strconv.FormatFloat(quat.Y, 'f', 2, 64) + ", "
-// 	s += strconv.FormatFloat(quat.Z, 'f', 2, 64) + ", "
-// 	s += strconv.FormatFloat(quat.W, 'f', 2, 64) + ", "
-// 	s += "}"
-// 	return s
-// }
-
-// func (ta *TerminalApp) matrixToShortString(matrix tetra3d.Matrix4) string {
-// 	s := "{"
-// 	for i, y := range matrix {
-// 		for _, x := range y {
-// 			s += strconv.FormatFloat(x, 'f', 2, 64) + ", "
-// 		}
-// 		if i < len(matrix)-1 {
-// 			s += "\n"
-// 		}
-// 	}
-// 	s += "}"
-// 	return s
-// }
+func combineStrings(text ...string) string {
+	return strings.Join(text, " ")
+}

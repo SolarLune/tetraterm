@@ -1,27 +1,50 @@
 # TetraTerm 🖥️
 
-**TetraTerm** is a terminal-based debugging app for Tetra3D games and applications. It features a node graph, easy visualization of node properties, and means to create, modify, and delete nodes with minimal modifications to your game. It works by hooking into your game using networking; this means your game can crash or be interrupted and you can debug as you would like, while TetraTerm continues without issue and will re-connect when possible.
+**TetraTerm** is a terminal-based debugging app for Tetra3D games and applications. It features a node graph, easy visualization of node properties, and means to create, modify, and delete nodes with minimal modifications to your game. It works by hooking into your game using localhost networking; this means your game can crash or be interrupted and you can debug as you would normally, while TetraTerm continues without issue and will re-connect when possible.
 
-## How to use
+## How to install
 
-The general approach to make this easiest to use would be to do as follows:
+The general approach to use this easily would be:
 
-Firstly, run `go get github.com/solarlune/tetraterm`. This downloads `tetraterm` so you can create a server for your game project.
+1. Run `go get github.com/solarlune/tetraterm` from your game project directory. This downloads `tetraterm` so you can create a server for your game project.
 
-2. Run `go install github.com/solarlune/tetraterm/terminal`
+2. Create a `Server` instance in your game and update it every tick from your `Game.Update()` function.
 
-3. Create a `Server` instance in your game and update it every frame.
-4. Run the game.
-5. Run `tetraterm` in a terminal. It should automatically read your game while it's running and connect to your game process via port 8000 to your game.
+3. Run `go install github.com/solarlune/tetraterm/terminal` to install the `tetraterm` terminal display application to your go bin directory. If it's in your terminal path, then you will now be able to run `tetraterm` from anywhere by just typing that command. You can also just checkout the TetraTerm repo and run the terminal application from that directory to get the same effect.
+
+4. Now just run your game, and `tetraterm` from a terminal. They should automatically connect via port 7979.
+
+## Basic usage
+
+TetraTerm has a few options - you have the node graph at the left and the game and node properties on the right. You can use the keyboard or mouse to focus on UI elements, and collapse or expand the node tree using space or enter. Ctrl+H lists general help and key information.
 
 ## To-do
 
-- [x] Get it to work
+- [x] Get it to work!
 - [x] Connection / Re-connection if server crashes
+  - [ ] Connection indicator
 - [x] Node graph
-- [x] Add Properties panel.
+- [x] Properties panel.
   - [x] Output position, scale, rotation, ID
-  - [ ] Allow modification of these properties?
+  - [ ] Tag display for properties
+  - [ ] Keys to scale
+  - [ ] Keys to rotate (this was working previously, I think it would be better to have a mode switch between moving, scaling, and rotation, though).
+  - [ ] Mode switch for local vs world movement?
+  - [ ] Allow modification / setting these properties
+- [x] Game properties panel.
+  - [x] FPS, TPS, frame-time, render count
+- [ ] Keybindings
+  - [ ] Expand / Collapse All
+  - [ ] Expand / Collapse All Up to Current Node
+  - [ ] Customizeable keybindings?
 - [x] Search pane (Shift+F)
+  - [ ] Search by tag, node type
+  - [ ] Shift+F while a node name is entered to cycle through Nodes with those names
 - [x] Clone pane (Shift+C)
-- [ ] 
+- [ ] Option to toggle debug drawing from terminal
+- [ ] Built-in free-look camera to not modify the hierarchy when following a node / examining a scene
+- [ ] Ability to create a blank node for hierarchy-purposes
+- [ ] EOFs when terminal expects a message can cause terminal drawing distortions; the terminal needs to be cleared when this happens
+- [ ] Ini file
+- [ ] Options menu
+  - [ ] Auto-hide or collapse treeview elements that are not selected?
