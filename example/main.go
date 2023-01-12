@@ -46,7 +46,7 @@ func (g *Game) Init() {
 	// ...But at the end, we'll create a tetraterm.Server. This is what allows
 	// the connection between our game and TetraTerm. We pass nil for the
 	// and specify the starting scene.
-	g.DebugServer = tetraterm.NewServer(nil, g.Scene)
+	g.DebugServer = tetraterm.NewServer(nil)
 
 }
 

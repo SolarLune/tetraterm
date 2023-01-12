@@ -28,8 +28,8 @@ TetraTerm has a few options - you have the node graph at the left and the game a
 
 - [x] Get it to work!
 - [x] Connection / Re-connection if server crashes
-  - [ ] Connection indicator
-  - [ ] Not freezing the terminal until a connection is established when one is abruptly stopped
+  - [x] Connection indicator
+  - [x] Not freezing the terminal until a connection is established when one is abruptly stopped
 - [ ] Quit button (modal?)
 - [x] Node graph
   - [ ] Hide or gray out nodes in the tree that aren't selected?
@@ -48,7 +48,7 @@ TetraTerm has a few options - you have the node graph at the left and the game a
 - [ ] Scrolling through the node tree with mouse wheel doesn't work? 
 - [ ] Follow Nodes
   - [ ] Built-in free-look camera to not modify the hierarchy when following a node?
-  - [ ] Following Nodes should look at the target  
+  - [ ] Following Nodes should look at the target constantly, regardless of camera movement (?)
 - [ ] Keybindings
   - [ ] Expand / Collapse All
   - [ ] Expand / Collapse All Up to Current Node
@@ -59,9 +59,11 @@ TetraTerm has a few options - you have the node graph at the left and the game a
 - [x] Clone pane (Shift+C)
   - [x] Cloning objects from other scenes in the library
 - [x] Option to toggle debug drawing from terminal (1 key, by default)
-- [ ] Ability to create a blank node for hierarchy-purposes
-- [ ] Flag to change port when running `tetraterm`
+- [ ] Ability to create a blank node for hierarchy-altering purposes
+- Flags
+  - [x] Flag to change port
+  - [x] Flag to change host
 - [x] EOFs when terminal expects a message can cause terminal drawing distortions; the terminal needs to be cleared when this happens
 - [ ] Options menu
-  - [ ] Auto-hide or collapse treeview elements that are not selected?
-  - [ ] Ini file for setting storage
+  - [ ] Auto-hide, collapse, or darken treeview elements that are not selected?
+  - [ ] Ini file for settings storage

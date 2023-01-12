@@ -112,15 +112,21 @@ func constructNodeTree(t3dNode tetra3d.INode) sceneNode {
 
 }
 
+// ConnectionSettings represents the set of options to use for both the terminal display client as well
+// as your server in your game. The host and port settings should match for the connection to take.
 type ConnectionSettings struct {
-	Host          string
-	Port          string
+	Host string // What host name to use for connecting from the client to the server
+	Port string // What port to use for the connection
+	// Whether logging should be silent (default) or not; if not silent, the terminal client will spam messages
+	// indicating the messages received from the server, and vice-versa
 	SilentLogging bool
 }
 
+// NewDefaultConnectionSettings returns a new ConnectionSettings object filled out with the default connection
+// setting values.
 func NewDefaultConnectionSettings() *ConnectionSettings {
 	return &ConnectionSettings{
-		Host:          "", // Local host
+		Host:          "", // "" is local host
 		Port:          "7979",
 		SilentLogging: true,
 	}
@@ -143,7 +149,8 @@ type Server struct {
 	DebugDrawBounds    bool
 }
 
-// NewServer returns a new server, listening on the specified port number string (like "8000").
+// NewServer returns a new server, using the connection settings provided. If you pass nil,
+// that is valid for a default set of connection settings.
 func NewServer(settings *ConnectionSettings) *Server {
 
 	if settings == nil {
@@ -524,7 +531,8 @@ func NewServer(settings *ConnectionSettings) *Server {
 
 }
 
-// Update updates the server as necessary. This should be called every tick.
+// Update updates the server as necessary. The scene should be the current game scene that you wish
+// to send and visualize in the terminal client. This should be called every tick.
 func (server *Server) Update(scene *tetra3d.Scene) {
 	server.activeScene = scene
 	server.activeLibrary = scene.Library()
@@ -548,7 +556,8 @@ func (server *Server) Update(scene *tetra3d.Scene) {
 
 }
 
-// Draw handles any additional drawing from the terminal.
+// Draw handles any additional drawing from the terminal, drawing to the screen using the Tetra3D
+// camera provided.
 func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 
 	server.t3dCamera = camera
@@ -615,10 +624,9 @@ func (server *Server) resetSelectedNode() {
 
 }
 
-// Display represents the terminal interface that hooks into your game through a TCP connection (default being on port 8000).
-// By manipulating the Display, you can view and modify your game scene while it's running. It will also hook into whatever
-// application is listening on the connected port, so you can leave it running while you stop and recompile your game; it will
-// update to match.
+// Display represents the terminal interface that hooks into your game through a TCP connection.
+// By manipulating the Display in your terminal, you can view and modify your connected game scene
+// while it's running. It will also automatically reconnect if the connection is lots.
 type Display struct {
 	Client         *p2p.Client
 	ClientSettings *ConnectionSettings
@@ -665,6 +673,8 @@ type Display struct {
 	// Camera *tetra3d.Camera
 }
 
+// NewDisplay returns a new Display object with the ConnectionSettings provided. If nil is passed,
+// the default connection settings set is used.
 func NewDisplay(settings *ConnectionSettings) *Display {
 
 	if settings == nil {
@@ -976,7 +986,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 			}
 
 			// If the app is nil, then we can stop the goroutine
-			if app.App == nil {
+			if !app.running.Load() {
 				return
 			}
 
@@ -1002,7 +1012,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 				})
 			}
 
-			if app.App == nil {
+			if !app.running.Load() {
 				return
 			}
 
@@ -1039,7 +1049,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 				// fmt.Println(info)
 			}
 
-			if app.App == nil {
+			if !app.running.Load() {
 				return
 			}
 
@@ -1226,6 +1236,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 
 }
 
+// initClient initializes or restarts the P2P connection client, reconnecting if necessary.
 func (td *Display) initClient() {
 
 	port := p2p.NewTCP(td.ClientSettings.Host, td.ClientSettings.Port)
@@ -1236,6 +1247,8 @@ func (td *Display) initClient() {
 	}
 
 	settings := p2p.NewClientSettings()
+	// If retry is high, then the terminal spams the server with requests
+	// If it's 0, then we never attempt a reconnection if the server ends unexpectedly
 	settings.SetRetry(1, time.Millisecond*500)
 	client.SetSettings(settings)
 
@@ -1251,6 +1264,7 @@ func (td *Display) initClient() {
 
 }
 
+// Start starts the terminal display app.
 func (td *Display) Start() error {
 
 	td.running.Store(true)
@@ -1269,9 +1283,10 @@ func (td *Display) Start() error {
 
 }
 
+// Stop stops the terminal display app.
 func (td *Display) Stop() {
 	td.App.Stop()
-	td.App = nil // When stopped, we set the App to nil to indicate that the goroutines associated with the display should stop as well
+	td.running.Store(false)
 }
 
 func (td Display) sendRequest(packet iPacket) (iPacket, error) {
