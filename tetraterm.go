@@ -138,22 +138,19 @@ type Server struct {
 	t3dCamera     *tetra3d.Camera
 	selectedNode  tetra3d.INode
 
-	DebugDraw bool
+	DebugDrawHierarchy bool
+	DebugDrawWireframe bool
+	DebugDrawBounds    bool
 }
 
 // NewServer returns a new server, listening on the specified port number string (like "8000").
-// You don't need to provide a library, but if you do, you'll be able to clone objects from other
-// scenes from that library.
-func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
+func NewServer(settings *ConnectionSettings) *Server {
 
 	if settings == nil {
 		settings = NewDefaultConnectionSettings()
 	}
 
-	server := &Server{
-		activeLibrary: scene.Library(),
-		selectedNode:  scene.Root,
-	}
+	server := &Server{}
 
 	port := p2p.NewTCP(settings.Host, settings.Port)
 
@@ -184,13 +181,39 @@ func NewServer(settings *ConnectionSettings, scene *tetra3d.Scene) *Server {
 
 	})
 
-	s.SetHandle(ptToggleDebugDraw, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+	s.SetHandle(ptToggleDebugDrawHierarchy, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
 
-		server.DebugDraw = !server.DebugDraw
+		server.DebugDrawHierarchy = !server.DebugDrawHierarchy
 
-		packet := toggleDebugDraw{}
+		packet := toggleDebugDrawHierarchy{}
 		packet.Decode(req)
-		packet.DebugDrawOn = server.DebugDraw
+		packet.DebugDrawOn = server.DebugDrawHierarchy
+		res = packet.Encode()
+
+		return
+
+	})
+
+	s.SetHandle(ptToggleDebugDrawWireframe, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+
+		server.DebugDrawWireframe = !server.DebugDrawWireframe
+
+		packet := toggleDebugDrawWireframe{}
+		packet.Decode(req)
+		packet.DebugDrawOn = server.DebugDrawWireframe
+		res = packet.Encode()
+
+		return
+
+	})
+
+	s.SetHandle(ptToggleDebugDrawBounds, func(ctx context.Context, req p2p.Data) (res p2p.Data, err error) {
+
+		server.DebugDrawBounds = !server.DebugDrawBounds
+
+		packet := toggleDebugDrawBounds{}
+		packet.Decode(req)
+		packet.DebugDrawOn = server.DebugDrawBounds
 		res = packet.Encode()
 
 		return
@@ -530,7 +553,7 @@ func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 
 	server.t3dCamera = camera
 
-	if server.DebugDraw {
+	if server.DebugDrawHierarchy {
 
 		camera.DrawDebugCenters(screen, server.selectedNode, colors.White())
 
@@ -545,12 +568,27 @@ func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 			}
 		}
 
-		draw(server.selectedNode)
+		nodes := append([]tetra3d.INode{server.activeScene.Root},
+			server.activeScene.Root.ChildrenRecursive()...,
+		)
 
-		for _, n := range server.selectedNode.ChildrenRecursive() {
+		for _, n := range nodes {
+			if n == server.selectedNode {
+				continue
+			}
 			draw(n)
 		}
 
+		draw(server.selectedNode) // Draw the node last so its name is visible
+
+	}
+
+	if server.DebugDrawBounds {
+		camera.DrawDebugBounds(screen, server.activeScene.Root, false, false)
+	}
+
+	if server.DebugDrawWireframe {
+		camera.DrawDebugWireframe(screen, server.activeScene.Root, colors.LightGray())
 	}
 
 }
@@ -658,11 +696,24 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 	app.Root.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 
 		if event.Rune() == '1' {
-			app.sendRequest(newToggleDebugDraw())
+			app.sendRequest(newToggleDebugDrawHierarchy())
+		}
+
+		if event.Rune() == '2' {
+			app.sendRequest(newToggleDebugDrawWireframe())
+		}
+
+		if event.Rune() == '3' {
+			app.sendRequest(newToggleDebugDrawBounds())
 		}
 
 		if event.Key() == tcell.KeyCtrlQ {
 			app.App.Stop()
+		}
+
+		if event.Key() == tcell.KeyCtrlR {
+			app.App.Sync()
+			return nil
 		}
 
 		return event
@@ -673,6 +724,8 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 	app.TreeView = tview.NewTreeView()
 	app.TreeView.SetBorder(true)
 	app.TreeView.SetTitle("[ ◆ Node Tree ]")
+	// Title color's set later
+	// app.TreeView.SetTitleColor(tcell.ColorCornflowerBlue)
 	app.TreeView.SetGraphicsColor(tcell.ColorGreen)
 
 	app.TreeView.SetSelectedFunc(func(node *tview.TreeNode) {
@@ -806,12 +859,18 @@ WASD, QE: Move Node in-game
 R: Reset Selected Node
 Shift+D: Duplicate Node
 Shift+X: Delete Node
-1: Toggle Debug Drawing
 
 F: Follow Node with Camera
 Shift+F: Search Nodes
 Shift+C: Clone Nodes
+`
 
+	keyText2 := `KEYS - 2
+
+1: Toggle Debug Hierarchy Drawing
+2: Toggle Debug Wireframe Drawing
+3: Toggle Debug Bounds Drawing
+Ctrl+R: Force Terminal Refresh (if it gets corrupted)
 Ctrl+Q : Quit (Ctrl+C also works)
 `
 
@@ -831,7 +890,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 	rightSide.SetDirection(tview.FlexRow)
 	treeFlex.AddItem(rightSide, 0, 1, false)
 
-	keysExplanation := newMultipageModal(app, "key explanation", helpText, keyText, cloneText)
+	keysExplanation := newMultipageModal(app, "key explanation", helpText, keyText, keyText2, cloneText)
 
 	app.NodePropertyArea = tview.NewTextArea()
 	app.NodePropertyArea.SetBorder(true)
@@ -851,19 +910,22 @@ Ctrl+Q : Quit (Ctrl+C also works)
 		for {
 
 			time.Sleep(time.Millisecond * 250)
-			app.receivingData.Store(true)
 
 			resp, err := app.sendRequest(newSceneRefreshPacket())
+
+			connected := false
 
 			if err != nil {
 				if err.Error() == "EOF" {
 					// Attempt to reopen connection
-					// log.Println("Request failed, attempting to reopen connection:")
 					app.initClient()
-				} else {
-					panic(err)
 				}
 			} else {
+
+				app.receivingData.Store(true)
+
+				connected = true
+
 				app.currentSceneTree = resp.(*sceneRefreshPacket).SceneTree
 
 				app.currentSceneTree.ResetParenting()
@@ -903,11 +965,25 @@ Ctrl+Q : Quit (Ctrl+C also works)
 
 				app.updateTreeNodeNames()
 
-				app.App.Draw()
+				// app.App.Draw()
 
 			}
 
+			if connected {
+				app.TreeView.SetTitle("[ ◆ Node Tree : [blue]Connected[white] ]")
+			} else {
+				app.TreeView.SetTitle("[ ◆ Node Tree : [red::b]Disconnected[white] ]")
+			}
+
+			// If the app is nil, then we can stop the goroutine
+			if app.App == nil {
+				return
+			}
+
+			app.App.Draw()
+
 			app.receivingData.Store(false)
+
 		}
 
 	}()
@@ -917,23 +993,21 @@ Ctrl+Q : Quit (Ctrl+C also works)
 
 			time.Sleep(time.Millisecond * 100)
 
-			app.TreeView.SetTitle("[ ◆ Node Tree ]")
-
 			resp, err := app.sendRequest(newNodeInfoPacket())
-			if err != nil {
-				log.Println(err)
-			} else {
+			if err == nil {
 				info := resp.(*nodeInfoPacket)
 				text := fmt.Sprintf("ID:%d\nVisible:%t\nType:%s\n\nPos:%v\nSca:%v\nRot:\n%v", info.ID, info.Visible, info.Type, info.Position, info.Scale, info.Rotation)
 				app.App.QueueUpdateDraw(func() {
 					app.NodePropertyArea.SetText(text, false)
 				})
-				// fmt.Println(info)
 			}
 
-			// app.receivingData.Store(true)
-			// app.receivingData.Store(false)
+			if app.App == nil {
+				return
+			}
+
 		}
+
 	}()
 
 	go func() {
@@ -941,9 +1015,9 @@ Ctrl+Q : Quit (Ctrl+C also works)
 			time.Sleep(time.Millisecond * 200)
 
 			resp, err := app.sendRequest(newGameInfoPacket())
-			if err != nil {
-				log.Println(err)
-			} else {
+			// We assume an error means the request couldn't go through for whatever reason,
+			// and so we won't trip on it
+			if err == nil {
 				info := resp.(*gameInfoPacket)
 
 				m := info.DebugInfo.AvgFrameTime.Round(time.Microsecond).Microseconds()
@@ -963,6 +1037,10 @@ Ctrl+Q : Quit (Ctrl+C also works)
 					app.GamePropertyArea.SetText(text, false)
 				})
 				// fmt.Println(info)
+			}
+
+			if app.App == nil {
+				return
 			}
 
 			// app.receivingData.Store(true)
@@ -1158,7 +1236,7 @@ func (td *Display) initClient() {
 	}
 
 	settings := p2p.NewClientSettings()
-	settings.SetRetry(1000, time.Millisecond*500)
+	settings.SetRetry(1, time.Millisecond*500)
 	client.SetSettings(settings)
 
 	if td.ClientSettings.SilentLogging {
@@ -1189,6 +1267,11 @@ func (td *Display) Start() error {
 
 	return td.App.EnableMouse(true).Run()
 
+}
+
+func (td *Display) Stop() {
+	td.App.Stop()
+	td.App = nil // When stopped, we set the App to nil to indicate that the goroutines associated with the display should stop as well
 }
 
 func (td Display) sendRequest(packet iPacket) (iPacket, error) {

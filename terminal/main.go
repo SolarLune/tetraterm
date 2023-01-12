@@ -6,7 +6,11 @@ func main() {
 
 	tapp := tetraterm.NewDisplay(nil)
 
-	if err := tapp.Start(); err != nil {
+	err := tapp.Start()
+
+	defer tapp.Stop()
+
+	if err != nil {
 		panic(err)
 	}
 

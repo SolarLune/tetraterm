@@ -30,6 +30,7 @@ TetraTerm has a few options - you have the node graph at the left and the game a
 - [x] Connection / Re-connection if server crashes
   - [ ] Connection indicator
   - [ ] Not freezing the terminal until a connection is established when one is abruptly stopped
+- [ ] Quit button (modal?)
 - [x] Node graph
   - [ ] Hide or gray out nodes in the tree that aren't selected?
 - [x] Properties panel.
@@ -41,6 +42,13 @@ TetraTerm has a few options - you have the node graph at the left and the game a
   - [ ] Allow modification / setting these properties numerically
 - [x] Game properties panel.
   - [x] FPS, TPS, frame-time, render count
+- [ ] Cloning Nodes should parent them to the currently highlighted Node 
+- [ ] Vertical progress bar / draggable for visualizing or even scrolling through the node tree?
+  - [ ] Display scroll percentage
+- [ ] Scrolling through the node tree with mouse wheel doesn't work? 
+- [ ] Follow Nodes
+  - [ ] Built-in free-look camera to not modify the hierarchy when following a node?
+  - [ ] Following Nodes should look at the target  
 - [ ] Keybindings
   - [ ] Expand / Collapse All
   - [ ] Expand / Collapse All Up to Current Node
@@ -51,7 +59,6 @@ TetraTerm has a few options - you have the node graph at the left and the game a
 - [x] Clone pane (Shift+C)
   - [x] Cloning objects from other scenes in the library
 - [x] Option to toggle debug drawing from terminal (1 key, by default)
-- [ ] Built-in free-look camera to not modify the hierarchy when following a node
 - [ ] Ability to create a blank node for hierarchy-purposes
 - [ ] Flag to change port when running `tetraterm`
 - [x] EOFs when terminal expects a message can cause terminal drawing distortions; the terminal needs to be cleared when this happens

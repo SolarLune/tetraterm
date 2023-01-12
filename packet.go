@@ -8,19 +8,21 @@ import (
 )
 
 const (
-	ptSceneRefresh     = "SceneRefresh"
-	ptNodeMove         = "NodeMove"
-	ptNodeRotate       = "NodeRotate"
-	ptNodeDuplicate    = "NodeDuplicate"
-	ptNodeCreate       = "NodeCreate"
-	ptGameInfo         = "GameInfo"
-	ptNodeDelete       = "NodeDelete"
-	ptNodeFollowCamera = "CameraFollow"
-	ptNodeSelect       = "SelectNode"
-	ptNodeReset        = "ResetNode"
-	ptNodeInfo         = "NodeInfo"
-	ptNodeMoveInTree   = "NodeMoveInTree"
-	ptToggleDebugDraw  = "ToggleDebugDraw"
+	ptSceneRefresh             = "SceneRefresh"
+	ptNodeMove                 = "NodeMove"
+	ptNodeRotate               = "NodeRotate"
+	ptNodeDuplicate            = "NodeDuplicate"
+	ptNodeCreate               = "NodeCreate"
+	ptGameInfo                 = "GameInfo"
+	ptNodeDelete               = "NodeDelete"
+	ptNodeFollowCamera         = "CameraFollow"
+	ptNodeSelect               = "SelectNode"
+	ptNodeReset                = "ResetNode"
+	ptNodeInfo                 = "NodeInfo"
+	ptNodeMoveInTree           = "NodeMoveInTree"
+	ptToggleDebugDrawHierarchy = "ToggleDebugDrawHierarchy"
+	ptToggleDebugDrawWireframe = "ToggleDebugDrawWireframe"
+	ptToggleDebugDrawBounds    = "ToggleDebugDrawBounds"
 )
 
 type iPacket interface {
@@ -416,15 +418,15 @@ func (packet *gameInfoPacket) DataType() string {
 
 /////
 
-type toggleDebugDraw struct {
+type toggleDebugDrawHierarchy struct {
 	DebugDrawOn bool
 }
 
-func newToggleDebugDraw() *toggleDebugDraw {
-	return &toggleDebugDraw{}
+func newToggleDebugDrawHierarchy() *toggleDebugDrawHierarchy {
+	return &toggleDebugDrawHierarchy{}
 }
 
-func (packet *toggleDebugDraw) Encode() p2p.Data {
+func (packet *toggleDebugDrawHierarchy) Encode() p2p.Data {
 	data := p2p.Data{}
 	err := data.SetGob(packet)
 	if err != nil {
@@ -433,10 +435,64 @@ func (packet *toggleDebugDraw) Encode() p2p.Data {
 	return data
 }
 
-func (packet *toggleDebugDraw) Decode(req p2p.Data) error {
+func (packet *toggleDebugDrawHierarchy) Decode(req p2p.Data) error {
 	return req.GetGob(&packet)
 }
 
-func (packet *toggleDebugDraw) DataType() string {
-	return ptToggleDebugDraw
+func (packet *toggleDebugDrawHierarchy) DataType() string {
+	return ptToggleDebugDrawHierarchy
+}
+
+/////
+
+type toggleDebugDrawWireframe struct {
+	DebugDrawOn bool
+}
+
+func newToggleDebugDrawWireframe() *toggleDebugDrawWireframe {
+	return &toggleDebugDrawWireframe{}
+}
+
+func (packet *toggleDebugDrawWireframe) Encode() p2p.Data {
+	data := p2p.Data{}
+	err := data.SetGob(packet)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func (packet *toggleDebugDrawWireframe) Decode(req p2p.Data) error {
+	return req.GetGob(&packet)
+}
+
+func (packet *toggleDebugDrawWireframe) DataType() string {
+	return ptToggleDebugDrawWireframe
+}
+
+/////
+
+type toggleDebugDrawBounds struct {
+	DebugDrawOn bool
+}
+
+func newToggleDebugDrawBounds() *toggleDebugDrawBounds {
+	return &toggleDebugDrawBounds{}
+}
+
+func (packet *toggleDebugDrawBounds) Encode() p2p.Data {
+	data := p2p.Data{}
+	err := data.SetGob(packet)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func (packet *toggleDebugDrawBounds) Decode(req p2p.Data) error {
+	return req.GetGob(&packet)
+}
+
+func (packet *toggleDebugDrawBounds) DataType() string {
+	return ptToggleDebugDrawBounds
 }
