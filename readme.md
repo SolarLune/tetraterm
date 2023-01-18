@@ -43,9 +43,9 @@ TetraTerm has a few options - you have the node graph at the left and the game a
 - [x] Game properties panel.
   - [x] FPS, TPS, frame-time, render count
 - [ ] Cloning Nodes should parent them to the currently highlighted Node 
-- [ ] Vertical progress bar / draggable for visualizing or even scrolling through the node tree?
-  - [ ] Display scroll percentage
-- [ ] Scrolling through the node tree with mouse wheel doesn't work? 
+- [x] Vertical progress bar / draggable for visualizing or even scrolling through the node tree?
+  - [ ] Display scroll percentage? (not sure if I want this anymore)
+- [ ] Scrolling through the node tree with mouse wheel doesn't work? (This has been determined to be an issue with tview, not TetraTerm.)
 - [ ] Follow Nodes
   - [ ] Built-in free-look camera to not modify the hierarchy when following a node?
   - [ ] Following Nodes should look at the target constantly, regardless of camera movement (?)
@@ -60,6 +60,7 @@ TetraTerm has a few options - you have the node graph at the left and the game a
   - [x] Cloning objects from other scenes in the library
 - [x] Option to toggle debug drawing from terminal (1 key, by default)
 - [ ] Ability to create a blank node for hierarchy-altering purposes
+- [ ] Ability to track a node to always display its properties in another pane (underneath the existing Node Properties pane?)
 - Flags
   - [x] Flag to change port
   - [x] Flag to change host

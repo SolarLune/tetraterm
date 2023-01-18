@@ -237,9 +237,7 @@ func NewServer(settings *ConnectionSettings) *Server {
 
 		if server.activeScene != nil {
 
-			nodes := append([]tetra3d.INode{server.activeScene.Root}, server.activeScene.Root.ChildrenRecursive()...)
-
-			for _, node := range nodes {
+			for _, node := range server.activeScene.Root.ChildrenRecursive() {
 
 				if node.ID() == packet.NodeID {
 					server.selectedNode = node
@@ -546,9 +544,7 @@ func (server *Server) Update(scene *tetra3d.Scene) {
 		server.ogTransforms = map[tetra3d.INode]ogLocalTransform{}
 	}
 
-	nodes := append([]tetra3d.INode{scene.Root}, scene.Root.ChildrenRecursive()...)
-
-	for _, n := range nodes {
+	for _, n := range scene.Root.ChildrenRecursive() {
 		server.recordOGTransforms(n)
 	}
 
@@ -577,11 +573,7 @@ func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 			}
 		}
 
-		nodes := append([]tetra3d.INode{server.activeScene.Root},
-			server.activeScene.Root.ChildrenRecursive()...,
-		)
-
-		for _, n := range nodes {
+		for _, n := range server.activeScene.Root.ChildrenRecursive() {
 			if n == server.selectedNode {
 				continue
 			}
@@ -642,8 +634,9 @@ type Display struct {
 
 	// Flexbox *tview.Flex
 
-	TreeNodeRoot *tview.TreeNode
-	TreeView     *tview.TreeView
+	TreeNodeRoot   *tview.TreeNode
+	TreeView       *tview.TreeView
+	TreeViewScroll *Scrollbar
 
 	NodePropertyArea *tview.TextArea
 	GamePropertyArea *tview.TextArea
@@ -751,10 +744,18 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 	leftSide := tview.NewFlex()
 	leftSide.SetDirection(tview.FlexRow)
 
-	treeFlex := tview.NewFlex()
-	treeFlex.AddItem(leftSide, 0, 2, true)
+	treePartial := tview.NewFlex()
+	treePartial.SetDirection(tview.FlexColumn)
+	treePartial.AddItem(app.TreeView, 0, 2, true)
 
-	leftSide.AddItem(app.TreeView, 0, 2, true)
+	app.TreeViewScroll = NewScrollbar(app.TreeView)
+	treePartial.AddItem(app.TreeViewScroll, 2, 0, false)
+
+	app.Root.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
+		return app.TreeViewScroll.HandleMouseInput(action, event)
+	})
+
+	leftSide.AddItem(treePartial, 0, 2, true)
 
 	app.SearchBar = tview.NewInputField()
 	app.SearchBar.SetAutocompleteFunc(func(currentText string) (entries []string) {
@@ -768,8 +769,6 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 		if app.SearchBarCloneMode {
 			nodeNames = app.SearchBarCloneModeAutocompleteNames
 		} else {
-
-			nodeNames = []string{app.currentSceneTree.Name}
 
 			for _, n := range app.currentSceneTree.ChildrenRecursive() {
 				nodeNames = append(nodeNames, n.Name)
@@ -788,7 +787,7 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 	})
 	app.SearchBar.SetLabel("Search Node: ")
 	app.SearchBar.SetLabelColor(tcell.ColorLightBlue)
-	app.SearchBar.SetFieldBackgroundColor(tcell.ColorDarkSlateBlue)
+	app.SearchBar.SetFieldBackgroundColor(tcell.ColorDarkSlateGray)
 	app.SearchBar.SetFieldTextColor(tcell.ColorLightBlue)
 
 	app.SearchBar.SetChangedFunc(func(text string) {
@@ -804,18 +803,19 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 				}
 			} else {
 
-				// Hacky fix
+				// Hacky fix for highlighting an element that's hidden by being under an unexpanded parent, I think?
 				app.TreeView.GetRoot().ExpandAll()
 
-				nodesToSearch := append([]sceneNode{app.currentSceneTree}, app.currentSceneTree.ChildrenRecursive()...)
-
-				for _, node := range nodesToSearch {
+				for _, node := range app.currentSceneTree.ChildrenRecursive() {
 
 					if strings.Contains(strings.ToLower(node.Name), strings.ToLower(text)) {
 						treeNode := app.SceneNodesToTreeNodes[node.NodeID]
-						treeNode.ExpandAll()
+						// treeNode.ExpandAll() // Not necessary if we expand the root above
 						app.TreeView.SetCurrentNode(treeNode)
 						app.sendRequest(newNodeSelectPacket(node.NodeID))
+
+						app.TreeViewScroll.ScrollTo(app.TreeViewScroll.ChildIndexInTree(treeNode))
+
 						break
 					}
 
@@ -840,14 +840,19 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 				app.SelectNextNodeIndex = res.(*nodeCreatePacket).NewSelectedNode
 			}
 		}
+		app.SearchBar.SetBackgroundColor(tcell.ColorBlack)
+		app.SearchBar.SetLabelColor(tcell.ColorLightBlue)
 		app.App.SetFocus(app.TreeView)
 	})
 
 	leftSide.AddItem(app.SearchBar, 1, 0, false)
 
+	overallFlex := tview.NewFlex()
+	overallFlex.AddItem(leftSide, 0, 2, true)
+
 	//
 
-	helpText := combineStrings(
+	helpText := combineStringsWithSpaces(
 		"Welcome to TetraTerm!",
 		"\n",
 		"\n",
@@ -884,23 +889,38 @@ Ctrl+R: Force Terminal Refresh (if it gets corrupted)
 Ctrl+Q : Quit (Ctrl+C also works)
 `
 
-	cloneText := combineStrings(
+	nodesText := combineStringsWithSpaces(
+		"NODE TREE",
+		"\n",
+		"\n",
+		"On the left hand side of the main view, you'll have the",
+		"Node Tree. This displays the nodes in the scene. You can",
+		"scroll it using the colored bar to the right.",
+		"\n",
+		"\n",
+		"On the right-hand side is the Node Properties, which lists",
+		"the Node's various game properties, as well as the Game Properties,",
+		"which lists things like FPS, node count, and render frame-time.",
+	)
+
+	cloneText := combineStringsWithSpaces(
 		"CLONING",
 		"\n",
 		"\n",
-		"When you press Ctrl+C, you go into clone mode.",
+		"When you press Shift+C, you go into clone mode.",
 		"In Clone Mode, you can specify any Node by name and clone it,",
 		"reparenting it to the currently selected Node.",
 		"\n",
 		"\n",
-		"The Node to clone can come from any Scene in the current Library.",
+		"The Node to clone can come from any Scene in the current Library (collection",
+		"of Scenes from which the current Scene comes from).",
 	)
 
 	rightSide := tview.NewFlex()
 	rightSide.SetDirection(tview.FlexRow)
-	treeFlex.AddItem(rightSide, 0, 1, false)
+	overallFlex.AddItem(rightSide, 0, 1, false)
 
-	keysExplanation := newMultipageModal(app, "key explanation", helpText, keyText, keyText2, cloneText)
+	keysExplanation := newMultipageModal(app, "key explanation", helpText, keyText, keyText2, nodesText, cloneText)
 
 	app.NodePropertyArea = tview.NewTextArea()
 	app.NodePropertyArea.SetBorder(true)
@@ -912,7 +932,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 	app.GamePropertyArea.SetTitle("[ Game Properties ]")
 	rightSide.AddItem(app.GamePropertyArea, 0, 1, false)
 
-	app.Root.AddAndSwitchToPage("Tree View", treeFlex, true)
+	app.Root.AddAndSwitchToPage("Tree View", overallFlex, true)
 	app.Root.AddPage(keysExplanation.Name, keysExplanation, true, false)
 
 	go func() {
@@ -936,53 +956,55 @@ Ctrl+Q : Quit (Ctrl+C also works)
 
 				connected = true
 
-				app.currentSceneTree = resp.(*sceneRefreshPacket).SceneTree
+				app.App.QueueUpdate(func() {
 
-				app.currentSceneTree.ResetParenting()
+					app.currentSceneTree = resp.(*sceneRefreshPacket).SceneTree
 
-				for _, node := range app.currentSceneTree.ChildrenRecursive() {
+					app.currentSceneTree.ResetParenting()
 
-					existingNode, exists := app.SceneNodesToTreeNodes[node.NodeID]
+					for _, node := range app.currentSceneTree.ChildrenRecursive() {
 
-					if !exists {
-						tn := tview.NewTreeNode(node.Name)
-						tn.SetSelectable(true)
-						tn.SetReference(node)
-						app.SceneNodesToTreeNodes[node.NodeID] = tn
-						existingNode = tn
+						existingNode, exists := app.SceneNodesToTreeNodes[node.NodeID]
+
+						if !exists {
+							tn := tview.NewTreeNode(node.Name)
+							tn.SetSelectable(true)
+							tn.SetReference(node)
+							app.SceneNodesToTreeNodes[node.NodeID] = tn
+							existingNode = tn
+						}
+
+						existingNode.ClearChildren()
+
+						if node.parent != nil {
+							app.SceneNodesToTreeNodes[node.parent.NodeID].AddChild(existingNode)
+						}
+
 					}
 
-					existingNode.ClearChildren()
-
-					if node.parent != nil {
-						app.SceneNodesToTreeNodes[node.parent.NodeID].AddChild(existingNode)
+					app.TreeNodeRoot = app.SceneNodesToTreeNodes[app.currentSceneTree.NodeID]
+					app.TreeNodeRoot.SetSelectable(true)
+					app.TreeNodeRoot.SetColor(tcell.ColorSkyblue)
+					app.TreeView.SetRoot(app.TreeNodeRoot)
+					if app.TreeView.GetCurrentNode() == nil {
+						app.TreeView.SetCurrentNode(app.TreeNodeRoot)
 					}
 
-				}
+					if app.SelectNextNode {
+						app.TreeView.SetCurrentNode(app.SceneNodesToTreeNodes[app.SelectNextNodeIndex])
+						app.SelectNextNode = false
+					}
 
-				app.TreeNodeRoot = app.SceneNodesToTreeNodes[app.currentSceneTree.NodeID]
-				app.TreeNodeRoot.SetSelectable(true)
-				app.TreeNodeRoot.SetColor(tcell.ColorSkyblue)
-				app.TreeView.SetRoot(app.TreeNodeRoot)
-				if app.TreeView.GetCurrentNode() == nil {
-					app.TreeView.SetCurrentNode(app.TreeNodeRoot)
-				}
+					app.updateTreeNodeNames()
 
-				if app.SelectNextNode {
-					app.TreeView.SetCurrentNode(app.SceneNodesToTreeNodes[app.SelectNextNodeIndex])
-					app.SelectNextNode = false
-				}
-
-				app.updateTreeNodeNames()
-
-				// app.App.Draw()
+				})
 
 			}
 
 			if connected {
-				app.TreeView.SetTitle("[ ◆ Node Tree : [blue]Connected[white] ]")
+				app.TreeView.SetTitle("[ ◆ Node Tree : [blue]🗸 Connected[white] ]")
 			} else {
-				app.TreeView.SetTitle("[ ◆ Node Tree : [red::b]Disconnected[white] ]")
+				app.TreeView.SetTitle("[ ◆ Node Tree : [red::b]✖ Disconnected[white] ]")
 			}
 
 			// If the app is nil, then we can stop the goroutine
@@ -990,12 +1012,22 @@ Ctrl+Q : Quit (Ctrl+C also works)
 				return
 			}
 
-			app.App.Draw()
-
 			app.receivingData.Store(false)
 
 		}
 
+	}()
+
+	// Periodically redraw the application; not strictly necessary, but it's easier to do this continually here
+	// than queue or call the draw periodically on certain events.
+	go func() {
+		for {
+			time.Sleep(time.Millisecond * 30)
+			if !app.running.Load() {
+				return
+			}
+			app.App.Draw()
+		}
 	}()
 
 	go func() {
@@ -1007,7 +1039,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 			if err == nil {
 				info := resp.(*nodeInfoPacket)
 				text := fmt.Sprintf("ID:%d\nVisible:%t\nType:%s\n\nPos:%v\nSca:%v\nRot:\n%v", info.ID, info.Visible, info.Type, info.Position, info.Scale, info.Rotation)
-				app.App.QueueUpdateDraw(func() {
+				app.App.QueueUpdate(func() {
 					app.NodePropertyArea.SetText(text, false)
 				})
 			}
@@ -1060,6 +1092,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 
 	app.TreeView.SetChangedFunc(func(node *tview.TreeNode) {
 		app.sendRequest(newNodeSelectPacket(node.GetReference().(sceneNode).NodeID))
+		app.TreeViewScroll.ScrollTo(app.TreeViewScroll.ChildIndexInTree(node))
 	})
 
 	app.TreeView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -1081,6 +1114,8 @@ Ctrl+Q : Quit (Ctrl+C also works)
 		if event.Rune() == 'F' {
 			app.SearchBar.SetText("")
 			app.SearchBar.SetLabel("Search Node: ")
+			app.SearchBar.SetBackgroundColor(tcell.ColorDarkSeaGreen)
+			app.SearchBar.SetLabelColor(tcell.ColorWhite)
 			app.SearchBarCloneMode = false
 			app.App.SetFocus(app.SearchBar)
 			return nil
@@ -1316,108 +1351,11 @@ func (display *Display) updateTreeNodeNames() {
 				name = "[+] " + name
 			}
 		} else {
-			name = " ◆ " + name
+			name = "◆ " + name
 		}
 
 		tn.SetText(name)
 
 	}
 
-	// display.TreeNodeRoot.Walk(func(node, parent *tview.TreeNode) bool {
-
-	// 	t3dNode := node.GetReference().(tetra3d.INode)
-
-	// 	if len(node.GetChildren()) > 0 {
-
-	// 		t := "[+] "
-	// 		if node.IsExpanded() {
-	// 			t = "[=] "
-	// 		}
-	// 		node.SetText(t + t3dNode.Name())
-
-	// 	} else {
-	// 		node.SetText(" +  " + t3dNode.Name())
-	// 	}
-
-	// 	return true
-	// })
-
-}
-
-type multipageModal struct {
-	Display *Display
-	Name    string
-	*tview.Pages
-}
-
-func newMultipageModal(display *Display, name string, pageTexts ...string) *multipageModal {
-
-	mp := &multipageModal{
-		Display: display,
-		Name:    name,
-		Pages:   tview.NewPages(),
-	}
-
-	for i, page := range pageTexts {
-
-		pageNum := i
-
-		modal := tview.NewModal()
-
-		modal.SetText(page)
-		if pageNum > 0 {
-			modal.AddButtons([]string{"Prev Page"})
-		}
-		modal.AddButtons([]string{"Close"})
-		if pageNum < len(pageTexts)-1 {
-			modal.AddButtons([]string{"Next Page"})
-		}
-
-		pageName := "Page " + strconv.Itoa(pageNum)
-
-		page := mp.AddPage(pageName, modal, true, false)
-
-		modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-
-			_, frontPage := page.GetFrontPage()
-
-			if modal == frontPage {
-
-				if pageNum > 0 && buttonLabel == "Prev Page" {
-					mp.Pages.SwitchToPage("Page " + strconv.Itoa(pageNum-1))
-				} else if pageNum < len(pageTexts)-1 && buttonLabel == "Next Page" {
-					mp.Pages.SwitchToPage("Page " + strconv.Itoa(pageNum+1))
-				} else if buttonLabel == "Close" {
-					// page, _ := mp.GetFrontPage()
-					// mp.HidePage(page)
-					mp.Display.Root.HidePage(mp.Name)
-				}
-
-			}
-
-		})
-
-		modal.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-
-			if event.Key() == tcell.KeyEscape {
-				mp.Display.Root.HidePage(mp.Name)
-				return nil
-			}
-
-			return event
-
-		})
-
-		if i == 0 {
-			mp.SwitchToPage(pageName)
-		}
-
-	}
-
-	return mp
-
-}
-
-func combineStrings(text ...string) string {
-	return strings.Join(text, " ")
 }
