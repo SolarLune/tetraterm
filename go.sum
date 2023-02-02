@@ -37,8 +37,8 @@ github.com/rivo/tview v0.0.0-20221221172820-02e38ea9604c/go.mod h1:lBUy/T5kyMudF
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.2 h1:YwD0ulJSJytLpiaWua0sBDusfsCZohxjxzVTYjwxfV8=
 github.com/rivo/uniseg v0.4.2/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
-github.com/solarlune/tetra3d v0.11.2 h1:O/5f3ywjSpY2uNEaS5yNn22PCj9hsWRFgaPMQ0PQtu4=
-github.com/solarlune/tetra3d v0.11.2/go.mod h1:nSZGdws074oC7B8g0e1pkIXnrzNCbQkGSUoQNbP6LX4=
+github.com/solarlune/tetra3d v0.12.0 h1:9qPJ6ffp0d2rG50b08NKVEWYj/MLBIfbqrUz3NR7kvo=
+github.com/solarlune/tetra3d v0.12.0/go.mod h1:nSZGdws074oC7B8g0e1pkIXnrzNCbQkGSUoQNbP6LX4=
 github.com/yuin/goldmark v1.4.0/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
