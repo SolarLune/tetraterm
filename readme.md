@@ -31,6 +31,8 @@ TetraTerm has a few options - you have the node graph at the left and the game a
   - [x] Connection indicator
   - [x] Not freezing the terminal until a connection is established when one is abruptly stopped
 - [ ] Quit button (modal?)
+- [ ] When changing scenes, try to select a node with the same name in the new scene (i.e. if the Player
+      is selected in Scene A and you go to Scene B, try to select the Player again)
 - [x] Node graph
   - [ ] Hide or gray out nodes in the tree that aren't selected?
 - [x] Properties panel.

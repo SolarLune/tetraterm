@@ -237,7 +237,7 @@ func NewServer(settings *ConnectionSettings) *Server {
 
 		if server.activeScene != nil {
 
-			for _, node := range server.activeScene.Root.ChildrenRecursive() {
+			for _, node := range server.activeScene.Root.SearchTree().INodes() {
 
 				if node.ID() == packet.NodeID {
 					server.selectedNode = node
@@ -317,9 +317,7 @@ func NewServer(settings *ConnectionSettings) *Server {
 		}
 
 		if server.t3dCamera != nil {
-
 			packet.DebugInfo = server.t3dCamera.DebugInfo
-
 		}
 
 		res = packet.Encode()
@@ -339,7 +337,7 @@ func NewServer(settings *ConnectionSettings) *Server {
 				nodeNames := []string{}
 
 				for _, s := range server.activeLibrary.Scenes {
-					for _, child := range s.Root.ChildrenRecursive() {
+					for _, child := range s.Root.SearchTree().INodes() {
 						candidate := child.Name()
 						exists := false
 						for _, n := range nodeNames {
@@ -371,7 +369,7 @@ func NewServer(settings *ConnectionSettings) *Server {
 
 			for _, scene := range scenesToSearch {
 
-				for _, node := range scene.Root.ChildrenRecursive() {
+				for _, node := range scene.Root.SearchTree().INodes() {
 
 					if node.Name() == packet.NodeToCreate {
 
@@ -544,7 +542,7 @@ func (server *Server) Update(scene *tetra3d.Scene) {
 		server.ogTransforms = map[tetra3d.INode]ogLocalTransform{}
 	}
 
-	for _, n := range scene.Root.ChildrenRecursive() {
+	for _, n := range scene.Root.SearchTree().INodes() {
 		server.recordOGTransforms(n)
 	}
 
@@ -573,7 +571,7 @@ func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 			}
 		}
 
-		for _, n := range server.activeScene.Root.ChildrenRecursive() {
+		for _, n := range server.activeScene.Root.SearchTree().INodes() {
 			if n == server.selectedNode {
 				continue
 			}
@@ -608,7 +606,7 @@ func (server *Server) resetSelectedNode() {
 
 		server.ogTransforms[server.selectedNode].Apply(true)
 
-		for _, node := range server.selectedNode.ChildrenRecursive() {
+		for _, node := range server.selectedNode.SearchTree().INodes() {
 			server.ogTransforms[node].Apply(false)
 		}
 
@@ -1053,6 +1051,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 	}()
 
 	go func() {
+
 		for {
 			time.Sleep(time.Millisecond * 200)
 
@@ -1088,6 +1087,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 			// app.receivingData.Store(true)
 			// app.receivingData.Store(false)
 		}
+
 	}()
 
 	app.TreeView.SetChangedFunc(func(node *tview.TreeNode) {
