@@ -1062,13 +1062,19 @@ Ctrl+Q : Quit (Ctrl+C also works)
 				info := resp.(*gameInfoPacket)
 
 				m := info.DebugInfo.AvgFrameTime.Round(time.Microsecond).Microseconds()
+				l := info.DebugInfo.AvgLightTime.Round(time.Microsecond).Microseconds()
+				a := info.DebugInfo.AvgAnimationTime.Round(time.Microsecond).Microseconds()
 				ft := fmt.Sprintf("%.2fms", float32(m)/1000)
+				lt := fmt.Sprintf("%.2fms", float32(l)/1000)
+				at := fmt.Sprintf("%.2fms", float32(a)/1000)
 
 				text := fmt.Sprintf(
-					"FPS:%v\nTPS:%v\nTotal Nodes: %d\nAvg. Frame-time: %s\nDrawn MeshParts: %d/%d\nDrawn Triangles: %d/%d",
+					"FPS:%v\nTPS:%v\nTotal Nodes: %d\nAvg. Frame-time: %s\nAvg. Lighting time: %s\nAvg. Anim. time: %s\nDrawn MeshParts: %d/%d\nDrawn Triangles: %d/%d",
 					info.FPS, info.TPS,
 					app.currentSceneTree.Count(),
 					ft,
+					lt,
+					at,
 					info.DebugInfo.DrawnParts,
 					info.DebugInfo.TotalParts,
 					info.DebugInfo.DrawnTris,

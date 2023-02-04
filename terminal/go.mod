@@ -18,7 +18,7 @@ require (
 	github.com/qmuntal/gltf v0.23.1 // indirect
 	github.com/rivo/tview v0.0.0-20221221172820-02e38ea9604c // indirect
 	github.com/rivo/uniseg v0.4.2 // indirect
-	github.com/solarlune/tetra3d v0.11.2 // indirect
+	github.com/solarlune/tetra3d v0.12.0 // indirect
 	golang.org/x/exp v0.0.0-20190731235908-ec7cb31e5a56 // indirect
 	golang.org/x/image v0.1.0 // indirect
 	golang.org/x/mobile v0.0.0-20220722155234-aaac322e2105 // indirect
