@@ -562,7 +562,11 @@ func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 
 		draw := func(node tetra3d.INode) {
 			if node != camera {
-				pos := camera.WorldToScreen(node.WorldPosition())
+				nodePos := node.WorldPosition()
+				pos := camera.WorldToScreen(nodePos)
+				if (!node.Visible() || camera.WorldPosition().Distance(nodePos) > camera.Far()) && node != server.selectedNode {
+					return
+				}
 				color := colors.Gray()
 				if node == server.selectedNode {
 					color = colors.White()
