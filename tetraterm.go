@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -318,6 +319,17 @@ func NewServer(settings *ConnectionSettings) *Server {
 
 		if server.t3dCamera != nil {
 			packet.DebugInfo = server.t3dCamera.DebugInfo
+
+			packet.SectorRendering = server.t3dCamera.SectorRendering
+			sector := server.t3dCamera.CurrentSector()
+			if sector != nil {
+				packet.Sector = sector.Model.Name()
+				packet.SectorNeighbors = []string{}
+				for n := range sector.NeighborsWithinRange(server.t3dCamera.SectorRenderDepth) {
+					packet.SectorNeighbors = append(packet.SectorNeighbors, n.Model.Name())
+				}
+			}
+
 		}
 
 		res = packet.Encode()
@@ -927,7 +939,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 	app.NodePropertyArea = tview.NewTextArea()
 	app.NodePropertyArea.SetBorder(true)
 	app.NodePropertyArea.SetTitle("[ Node Properties ]")
-	rightSide.AddItem(app.NodePropertyArea, 0, 2, false)
+	rightSide.AddItem(app.NodePropertyArea, 0, 1, false)
 
 	app.GamePropertyArea = tview.NewTextArea()
 	app.GamePropertyArea.SetBorder(true)
@@ -1073,16 +1085,41 @@ Ctrl+Q : Quit (Ctrl+C also works)
 				at := fmt.Sprintf("%.2fms", float32(a)/1000)
 
 				text := fmt.Sprintf(
-					"FPS:%v\nTPS:%v\nTotal Nodes: %d\nAvg. Frame-time: %s\nAvg. Lighting time: %s\nAvg. Anim. time: %s\nDrawn MeshParts: %d/%d\nDrawn Triangles: %d/%d",
+					"FPS:%v\nTPS:%v\nTotal Nodes: %d\nAvg. Frame-time: %s\nAvg. Lighting time: %s\nLights: %d/%d\nAvg. Anim. time: %s\nDrawn MeshParts: %d/%d\nDrawn Triangles: %d/%d\nSector Rendering: %t",
 					info.FPS, info.TPS,
 					app.currentSceneTree.Count(),
 					ft,
 					lt,
+					info.DebugInfo.LightCount,
+					info.DebugInfo.ActiveLightCount,
 					at,
 					info.DebugInfo.DrawnParts,
 					info.DebugInfo.TotalParts,
 					info.DebugInfo.DrawnTris,
-					info.DebugInfo.TotalTris)
+					info.DebugInfo.TotalTris,
+					info.SectorRendering,
+				)
+
+				if info.SectorRendering {
+					sectorName := "<NONE>"
+					if info.Sector != "" {
+						sectorName = info.Sector
+					}
+
+					neighboringSectors := "{"
+
+					sort.Strings(info.SectorNeighbors)
+
+					for i, s := range info.SectorNeighbors {
+						neighboringSectors += s
+						if i < len(info.SectorNeighbors)-1 {
+							neighboringSectors += ", "
+						}
+					}
+
+					neighboringSectors += "}"
+					text += fmt.Sprintf("\n---------\nCurrent Sector: %s\n%d Neighboring Visible Sectors:%s", sectorName, len(info.SectorNeighbors), neighboringSectors)
+				}
 
 				app.App.QueueUpdate(func() {
 					app.GamePropertyArea.SetText(text, false)

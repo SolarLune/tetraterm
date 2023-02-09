@@ -7,7 +7,7 @@ require (
 	github.com/hajimehoshi/ebiten/v2 v2.4.8
 	github.com/leprosus/golang-p2p v1.3.11
 	github.com/rivo/tview v0.0.0-20221221172820-02e38ea9604c
-	github.com/solarlune/tetra3d v0.12.0
+	github.com/solarlune/tetra3d v0.12.1
 )
 
 require (

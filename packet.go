@@ -391,8 +391,11 @@ func (packet *nodeCreatePacket) DataType() string {
 /////
 
 type gameInfoPacket struct {
-	FPS, TPS  float32
-	DebugInfo tetra3d.DebugInfo
+	FPS, TPS        float32
+	DebugInfo       tetra3d.DebugInfo
+	SectorRendering bool
+	Sector          string
+	SectorNeighbors []string
 }
 
 func newGameInfoPacket() *gameInfoPacket {

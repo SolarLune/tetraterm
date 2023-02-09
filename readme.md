@@ -16,7 +16,7 @@ The general approach to install TetraTerm easily would be:
 
 3. Run `go install github.com/solarlune/tetraterm/terminal` to install the `tetraterm` terminal display application to your Go bin directory. If that Go bin directory (which defaults to `~/go` on Linux) is in your terminal path, then you will now be able to run `tetraterm` from anywhere by just typing that command. You can also just checkout the TetraTerm repo and run or build the terminal application from the terminal directory for the same result.
 
-4. Now just run your game as you normally do, and run `tetraterm` from a terminal. They should automatically connect to each other via port 7979 (for now, that's hardcoded into the terminal side).
+4. Now just run your game as you normally do, and run `tetraterm` from a terminal. They should automatically connect to each other via port 7979 (the port number used is customizeable by passing a port flag to `tetraterm`).
 
 See the example for more information.
 
