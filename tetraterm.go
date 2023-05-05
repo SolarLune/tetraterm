@@ -179,7 +179,7 @@ func NewServer(settings *ConnectionSettings) *Server {
 
 			if server.selectedNode != server.t3dCamera {
 				server.selectedNode.AddChildren(server.t3dCamera)
-				server.t3dCamera.ResetLocalTransform()
+				server.t3dCamera.ClearLocalTransform()
 				server.t3dCamera.Move(0, 0, 10)
 			}
 
@@ -744,6 +744,7 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 	// Title color's set later
 	// app.TreeView.SetTitleColor(tcell.ColorCornflowerBlue)
 	app.TreeView.SetGraphicsColor(tcell.ColorGreen)
+	app.TreeView.SetBackgroundColor(tcell.ColorDefault)
 
 	app.TreeView.SetSelectedFunc(func(node *tview.TreeNode) {
 
@@ -937,11 +938,16 @@ Ctrl+Q : Quit (Ctrl+C also works)
 	keysExplanation := newMultipageModal(app, "key explanation", helpText, keyText, keyText2, nodesText, cloneText)
 
 	app.NodePropertyArea = tview.NewTextArea()
+	app.NodePropertyArea.SetBackgroundColor(tcell.ColorDefault)
+	style := tcell.Style{}.Background(tcell.ColorDefault)
+	app.NodePropertyArea.SetTextStyle(style)
 	app.NodePropertyArea.SetBorder(true)
 	app.NodePropertyArea.SetTitle("[ Node Properties ]")
 	rightSide.AddItem(app.NodePropertyArea, 0, 1, false)
 
 	app.GamePropertyArea = tview.NewTextArea()
+	app.GamePropertyArea.SetBackgroundColor(tcell.ColorDefault)
+	app.GamePropertyArea.SetTextStyle(style)
 	app.GamePropertyArea.SetBorder(true)
 	app.GamePropertyArea.SetTitle("[ Game Properties ]")
 	rightSide.AddItem(app.GamePropertyArea, 0, 1, false)
