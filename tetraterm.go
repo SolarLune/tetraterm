@@ -599,7 +599,10 @@ func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 	}
 
 	if server.DebugDrawBounds {
-		camera.DrawDebugBounds(screen, server.activeScene.Root, false, false)
+		drawSettings := tetra3d.DefaultDrawDebugBoundsSettings()
+		drawSettings.RenderBroadphase = false
+		drawSettings.RenderTrianglesAABB = false
+		camera.DrawDebugBoundsColored(screen, server.activeScene.Root, drawSettings)
 	}
 
 	if server.DebugDrawWireframe {
@@ -1377,7 +1380,7 @@ func (td *Display) Stop() {
 	td.running.Store(false)
 }
 
-func (td Display) sendRequest(packet iPacket) (iPacket, error) {
+func (td *Display) sendRequest(packet iPacket) (iPacket, error) {
 
 	response, err := td.Client.Send(packet.DataType(), packet.Encode())
 	if err != nil {
