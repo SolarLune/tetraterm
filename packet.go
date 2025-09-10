@@ -61,10 +61,10 @@ func (packet *sceneRefreshPacket) DataType() string {
 //
 
 type nodeMovePacket struct {
-	X, Y, Z float64
+	X, Y, Z float32
 }
 
-func newNodeMovePacket(x, y, z float64) *nodeMovePacket {
+func newNodeMovePacket(x, y, z float32) *nodeMovePacket {
 	return &nodeMovePacket{X: x, Y: y, Z: z}
 }
 
@@ -88,10 +88,10 @@ func (packet *nodeMovePacket) DataType() string {
 //
 
 type nodeRotatePacket struct {
-	X, Y, Z, Angle float64
+	X, Y, Z, Angle float32
 }
 
-func newNodeRotatePacket(x, y, z, angle float64) *nodeRotatePacket {
+func newNodeRotatePacket(x, y, z, angle float32) *nodeRotatePacket {
 	return &nodeRotatePacket{X: x, Y: y, Z: z, Angle: angle}
 }
 
@@ -115,10 +115,10 @@ func (packet *nodeRotatePacket) DataType() string {
 //
 
 type nodeSelectPacket struct {
-	NodeID uint64
+	NodeID uint32
 }
 
-func newNodeSelectPacket(nodeID uint64) *nodeSelectPacket {
+func newNodeSelectPacket(nodeID uint32) *nodeSelectPacket {
 	return &nodeSelectPacket{NodeID: nodeID}
 }
 
@@ -167,7 +167,7 @@ func (packet *nodeFollowCameraPacket) DataType() string {
 //
 
 type nodeDuplicatePacket struct {
-	NewSelectedNode uint64
+	NewSelectedNode uint32
 	SceneTree       sceneNode
 }
 
@@ -195,7 +195,7 @@ func (packet *nodeDuplicatePacket) DataType() string {
 //
 
 type nodeDeletePacket struct {
-	NewSelectedNode uint64
+	NewSelectedNode uint32
 	SceneTree       sceneNode
 }
 
@@ -247,7 +247,7 @@ func (packet *nodeResetPacket) DataType() string {
 
 //
 
-type matrix3 [3][3]float64
+type matrix3 [3][3]float32
 
 func matrix4ToMatrix3(mat tetra3d.Matrix4) matrix3 {
 	return matrix3{
@@ -271,7 +271,7 @@ func (mat matrix3) String() string {
 		}
 
 		for j := 0; j < 3; j++ {
-			str += strconv.FormatFloat(mat[i][j], 'f', 2, 64)
+			str += strconv.FormatFloat(float64(mat[i][j]), 'f', 2, 64)
 			if j < 2 {
 				str += ", "
 			}
@@ -291,9 +291,9 @@ func (mat matrix3) String() string {
 }
 
 type nodeInfoPacket struct {
-	ID       uint64
-	Position tetra3d.Vector
-	Scale    tetra3d.Vector
+	ID       uint32
+	Position tetra3d.Vector3
+	Scale    tetra3d.Vector3
 	Rotation matrix3
 	Visible  bool
 	Type     tetra3d.NodeType
@@ -331,7 +331,7 @@ const (
 
 type nodeMoveInTreePacket struct {
 	MoveDir         int
-	NewSelectedNode uint64
+	NewSelectedNode uint32
 	SceneTree       sceneNode
 }
 
@@ -363,7 +363,7 @@ type nodeCreatePacket struct {
 
 	ViableNodes []string
 
-	NewSelectedNode uint64
+	NewSelectedNode uint32
 	SceneTree       sceneNode
 }
 

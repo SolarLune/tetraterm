@@ -25,8 +25,8 @@ import (
 type ogLocalTransform struct {
 	Node     tetra3d.INode
 	Parent   tetra3d.INode
-	Position tetra3d.Vector
-	Scale    tetra3d.Vector
+	Position tetra3d.Vector3
+	Scale    tetra3d.Vector3
 	Rotation tetra3d.Matrix4
 }
 
@@ -66,7 +66,7 @@ func (el emptyLogger) Error(msg string) {}
 
 type sceneNode struct {
 	Name     string
-	NodeID   uint64
+	NodeID   uint32
 	Children []sceneNode
 
 	// Extra Stuff
@@ -297,7 +297,7 @@ func NewServer(settings *ConnectionSettings) *Server {
 			packet.Position = server.selectedNode.LocalPosition()
 			packet.Scale = server.selectedNode.LocalScale()
 			packet.Rotation = matrix4ToMatrix3(server.selectedNode.LocalRotation())
-			packet.Visible = server.selectedNode.Visible()
+			packet.Visible = server.selectedNode.IsVisible()
 			packet.Type = server.selectedNode.Type()
 			res = packet.Encode()
 
@@ -576,23 +576,23 @@ func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 			if node != camera {
 				nodePos := node.WorldPosition()
 				pos := camera.WorldToScreen(nodePos)
-				if (!node.Visible() || camera.WorldPosition().Distance(nodePos) > camera.Far()) && node != server.selectedNode {
+				if (!node.IsVisible() || camera.WorldPosition().DistanceTo(nodePos) > camera.Far()) && node != server.selectedNode {
 					return
 				}
 				color := colors.Gray()
 				if node == server.selectedNode {
 					color = colors.White()
 				}
-				camera.DebugDrawText(screen, node.Name(), pos.X, pos.Y, 1, color)
+				camera.DrawDebugText(screen, node.Name(), pos.X, pos.Y, 1, color)
 			}
 		}
 
-		for _, n := range server.activeScene.Root.SearchTree().INodes() {
-			if n == server.selectedNode {
-				continue
-			}
-			draw(n)
-		}
+		// for _, n := range server.activeScene.Root.SearchTree().INodes() {
+		// 	if n == server.selectedNode {
+		// 		continue
+		// 	}
+		// 	draw(n)
+		// }
 
 		draw(server.selectedNode) // Draw the node last so its name is visible
 
@@ -600,7 +600,7 @@ func (server *Server) Draw(screen *ebiten.Image, camera *tetra3d.Camera) {
 
 	if server.DebugDrawBounds {
 		drawSettings := tetra3d.DefaultDrawDebugBoundsSettings()
-		drawSettings.RenderBroadphase = false
+		drawSettings.RenderBroadphases = false
 		drawSettings.RenderTrianglesAABB = false
 		camera.DrawDebugBoundsColored(screen, server.activeScene.Root, drawSettings)
 	}
@@ -667,9 +667,9 @@ type Display struct {
 	// propertyText *tview.TextArea
 
 	SelectNextNode      bool
-	SelectNextNodeIndex uint64
+	SelectNextNodeIndex uint32
 
-	SceneNodesToTreeNodes map[uint64]*tview.TreeNode
+	SceneNodesToTreeNodes map[uint32]*tview.TreeNode
 	// DebugDraw    bool
 
 	// deleteNode        bool
@@ -698,7 +698,7 @@ func NewDisplay(settings *ConnectionSettings) *Display {
 		App:     tview.NewApplication(),
 		running: atomic.Bool{},
 
-		SceneNodesToTreeNodes: map[uint64]*tview.TreeNode{},
+		SceneNodesToTreeNodes: map[uint32]*tview.TreeNode{},
 
 		// Flexbox: tview.NewFlex(),
 
@@ -1086,9 +1086,9 @@ Ctrl+Q : Quit (Ctrl+C also works)
 			if err == nil {
 				info := resp.(*gameInfoPacket)
 
-				m := info.DebugInfo.AvgFrameTime.Round(time.Microsecond).Microseconds()
-				l := info.DebugInfo.AvgLightTime.Round(time.Microsecond).Microseconds()
-				a := info.DebugInfo.AvgAnimationTime.Round(time.Microsecond).Microseconds()
+				m := info.DebugInfo.FrameTime.Round(time.Microsecond).Microseconds()
+				l := info.DebugInfo.LightTime.Round(time.Microsecond).Microseconds()
+				a := info.DebugInfo.AnimationTime.Round(time.Microsecond).Microseconds()
 				ft := fmt.Sprintf("%.2fms", float32(m)/1000)
 				lt := fmt.Sprintf("%.2fms", float32(l)/1000)
 				at := fmt.Sprintf("%.2fms", float32(a)/1000)
@@ -1254,7 +1254,7 @@ Ctrl+Q : Quit (Ctrl+C also works)
 
 		// }
 
-		moveDist := 1.0
+		moveDist := float32(1.0)
 		if event.Rune() == 'w' {
 			app.sendRequest(newNodeMovePacket(0, 0, -moveDist))
 			return nil

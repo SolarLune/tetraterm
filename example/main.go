@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -34,7 +35,9 @@ func (g *Game) Init() {
 
 	// For this example, we'll load a GLTF file as you might normally do...
 
-	library, err := tetra3d.LoadGLTFData(gltfData, nil)
+	reader := bytes.NewReader(gltfData)
+
+	library, err := tetra3d.LoadGLTFData(reader, nil)
 	if err != nil {
 		panic(err)
 	}
